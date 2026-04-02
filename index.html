@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+  <title>SmartAgroMap – Diagnostic Marcel Bossou</title>
+
+  <!-- Ressources QGIS2WEB -->
+  <link rel="stylesheet" href="qgis2web_export/css/leaflet.css" />
+  <link rel="stylesheet" href="qgis2web_export/css/L.Control.Layers.Tree.css" />
+  <link rel="stylesheet" href="qgis2web_export/css/L.Control.Locate.min.css" />
+  <link rel="stylesheet" href="qgis2web_export/css/qgis2web.css" />
+  <link rel="stylesheet" href="qgis2web_export/css/fontawesome-all.min.css" />
+  <link rel="stylesheet" href="qgis2web_export/css/leaflet.photon.css" />
+  <link rel="stylesheet" href="qgis2web_export/css/leaflet-measure.css" />
+
+  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+  <style>
+    /* ========== STYLES (inchangés, identiques à la version finale précédente) ========== */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html { scroll-behavior: smooth; height: auto; min-height: 100vh; overflow-y: auto; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #f8faf6;
+      color: #1e2a1e;
+      line-height: 1.5;
+      height: auto;
+      min-height: 100vh;
+      overflow-y: auto;
+    }
+    .login-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.85);
+      backdrop-filter: blur(8px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10000;
+    }
+    .login-card {
+      background: white;
+      border-radius: 32px;
+      padding: 2rem;
+      width: 340px;
+      text-align: center;
+      box-shadow: 0 25px 40px rgba(0,0,0,0.3);
+    }
+    .login-card h3 { font-size: 1.6rem; font-weight: 700; color: #1f3a1f; margin-bottom: 0.25rem; }
+    .login-card p { font-size: 0.85rem; color: #5a6e4a; margin-bottom: 1.5rem; }
+    .login-card input { width: 100%; padding: 0.9rem; margin-bottom: 1rem; border: 1px solid #ddd; border-radius: 48px; font-size: 1rem; outline: none; }
+    .login-card input:focus { border-color: #2d5a27; box-shadow: 0 0 0 2px rgba(45,90,39,0.2); }
+    .login-card button { background: #2d5a27; color: white; border: none; padding: 0.9rem; width: 100%; border-radius: 48px; font-weight: 600; cursor: pointer; transition: background 0.2s; }
+    .login-card button:hover { background: #1f3a1f; }
+    .error-msg { color: #c0392b; font-size: 0.8rem; margin-top: 0.5rem; }
+    .hidden { display: none !important; }
+
+    .nav-bar {
+      background: #1f3a1f;
+      color: white;
+      padding: 0 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 64px;
+      position: sticky;
+      top: 0;
+      z-index: 900;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    .nav-logo { font-weight: 700; font-size: 1.2rem; display: flex; align-items: center; gap: 0.6rem; }
+    .nav-tabs {
+      display: flex;
+      gap: 0.25rem;
+      background: rgba(255,255,255,0.1);
+      padding: 0.25rem;
+      border-radius: 48px;
+    }
+    .tab-btn {
+      background: transparent;
+      border: none;
+      padding: 0.5rem 1.2rem;
+      border-radius: 40px;
+      font-weight: 500;
+      font-size: 0.85rem;
+      color: rgba(255,255,255,0.7);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .tab-btn.active { background: #2d5a27; color: white; box-shadow: 0 2px 6px rgba(0,0,0,0.2); }
+    .tab-btn:hover:not(.active) { background: rgba(255,255,255,0.15); color: white; }
+
+    .hero {
+      background: linear-gradient(135deg, #1f3a1f, #2d5a27);
+      color: white;
+      padding: 3rem 2rem;
+      text-align: center;
+    }
+    .hero h1 { font-size: 2.2rem; font-weight: 700; margin-bottom: 0.5rem; }
+    .hero p { font-size: 1rem; opacity: 0.9; }
+    .hero-meta {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 1.2rem;
+      margin-top: 1.5rem;
+    }
+    .hero-meta span { background: rgba(255,255,255,0.15); padding: 0.4rem 1rem; border-radius: 40px; font-size: 0.85rem; }
+
+    .main-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem 3rem;
+    }
+    .tab-content { display: none; animation: fade 0.3s ease; }
+    .tab-content.active-tab { display: block; }
+    @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+
+    /* Fiche parcelle */
+    .parcelle-card {
+      background: white;
+      border-radius: 24px;
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.05);
+      border-left: 6px solid #4a8c3f;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .parcelle-card:hover { transform: translateY(-2px); box-shadow: 0 12px 24px rgba(0,0,0,0.08); }
+    .parcelle-card h3 { font-size: 1.4rem; font-weight: 700; color: #1f3a1f; margin-bottom: 0.75rem; }
+    .parcelle-details {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+    .parcelle-item {
+      background: #fefef9;
+      padding: 0.8rem;
+      border-radius: 16px;
+      border: 1px solid #e2e8dc;
+    }
+
+    /* KPI, cartes, graphiques, etc. (inchangés) */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+    .kpi-card {
+      background: white;
+      border-radius: 20px;
+      padding: 1.2rem;
+      text-align: center;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+      border: 1px solid #e2e8dc;
+      transition: all 0.2s;
+    }
+    .kpi-card:hover { transform: translateY(-3px); box-shadow: 0 8px 20px rgba(0,0,0,0.08); }
+    .kpi-value { font-size: 1.8rem; font-weight: 800; color: #2d5a27; }
+    .kpi-label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: #5a6e4a; }
+
+    .card-modern {
+      background: white;
+      border-radius: 24px;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+      border: 1px solid #e2e8dc;
+      transition: box-shadow 0.2s;
+    }
+    .card-modern:hover { box-shadow: 0 8px 20px rgba(0,0,0,0.08); }
+    .section-title {
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: #1f3a1f;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .grid-2cols {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1.5rem;
+    }
+
+    .soil-info {
+      background: #eef2e9;
+      border-radius: 20px;
+      padding: 1.2rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      border-left: 5px solid #d9a13b;
+    }
+    .soil-info-icon { font-size: 2rem; }
+    .soil-info-text { flex: 1; }
+    .soil-info-text strong { color: #a5671a; }
+    .soil-stats {
+      display: flex;
+      gap: 1rem;
+      margin-top: 0.5rem;
+      flex-wrap: wrap;
+    }
+    .soil-stat {
+      background: white;
+      border-radius: 40px;
+      padding: 0.3rem 1rem;
+      font-size: 0.8rem;
+      font-weight: 500;
+    }
+
+    .reco-list {
+      list-style: none;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 0.8rem;
+    }
+    .reco-list li {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.6rem;
+      font-size: 0.9rem;
+      background: #fefef9;
+      padding: 0.6rem;
+      border-radius: 16px;
+    }
+    .reco-list li::before { content: "🌱"; font-size: 1rem; flex-shrink: 0; }
+
+    .btn-pdf {
+      background: #2d5a27;
+      color: white;
+      padding: 0.8rem 2rem;
+      border-radius: 48px;
+      text-decoration: none;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.8rem;
+      transition: all 0.2s;
+    }
+    .btn-pdf:hover { background: #1f3a1f; transform: scale(1.02); }
+
+    .map-wrapper {
+      height: 520px;
+      width: 100%;
+      border-radius: 24px;
+      overflow: hidden;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+      border: 1px solid #c8d9c5;
+    }
+    #map { height: 100%; width: 100%; }
+
+    .service-card {
+      background: linear-gradient(135deg, #eef5ea, #ffffff);
+      border-radius: 24px;
+      padding: 2rem;
+      text-align: center;
+      border: 1px dashed #4a8c3f;
+    }
+    .btn-outline {
+      background: transparent;
+      border: 2px solid #2d5a27;
+      color: #2d5a27;
+      padding: 0.6rem 1.5rem;
+      border-radius: 48px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+    .btn-outline:hover { background: #2d5a27; color: white; }
+
+    footer {
+      background: #1f3a1f;
+      color: #bdd4b5;
+      text-align: center;
+      padding: 1.8rem;
+      font-size: 0.8rem;
+      margin-top: 2rem;
+    }
+
+    @media (max-width: 700px) {
+      .nav-tabs { gap: 0.1rem; }
+      .tab-btn { padding: 0.4rem 0.8rem; font-size: 0.75rem; }
+      .map-wrapper { height: 380px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Connexion -->
+<div id="loginOverlay" class="login-overlay">
+  <div class="login-card">
+    <h3>🌾 SmartAgroMap</h3>
+    <p>Accès sécurisé · Terrain Marcel Bossou</p>
+    <input type="password" id="passwordInput" placeholder="Mot de passe" autocomplete="off">
+    <button onclick="checkPassword()">Accéder au tableau de bord</button>
+    <div id="loginError" class="error-msg"></div>
+  </div>
+</div>
+<script>
+  function checkPassword() {
+    const pwd = document.getElementById('passwordInput').value;
+    if (pwd === 'agro2026') {
+      document.getElementById('loginOverlay').classList.add('hidden');
+    } else {
+      document.getElementById('loginError').innerText = 'Mot de passe incorrect (agro2026)';
+      document.getElementById('passwordInput').style.borderColor = '#c0392b';
+    }
+  }
+  document.getElementById('passwordInput').addEventListener('keypress', e => { if(e.key === 'Enter') checkPassword(); });
+</script>
+
+<nav class="nav-bar">
+  <div class="nav-logo">🌿 SmartAgroMap · Atakpamé</div>
+  <div class="nav-tabs">
+    <button class="tab-btn active" data-tab="carte">🗺️ Carte</button>
+    <button class="tab-btn" data-tab="indicateurs">📊 Indicateurs</button>
+    <button class="tab-btn" data-tab="recommandations">🌱 Recommandations</button>
+    <button class="tab-btn" data-tab="suivi">⏳ Suivi</button>
+    <button class="tab-btn" data-tab="rapport">📄 Rapport</button>
+  </div>
+</nav>
+
+<div class="hero">
+  <h1>Diagnostic agronomique<br>Terrain Marcel Bossou</h1>
+  <p>Analyse géospatiale des sols, de l'eau et de la végétation — Atakpamé, Togo</p>
+  <div class="hero-meta">
+    <span>📅 Image satellite : 22 mars 2026</span>
+    <span>🏞️ Surface : ≈ 22 ha</span>
+    <span>📄 Rapport : avril 2026</span>
+  </div>
+</div>
+
+<main class="main-container">
+
+  <!-- ========== ONGLET CARTE ========== -->
+  <div id="carte-tab" class="tab-content active-tab">
+    <!-- Fiche parcelle (visible uniquement ici) -->
+    <div class="parcelle-card">
+      <h3>📍 Parcelle de Monsieur Marcel Bossou</h3>
+      <p><strong>Localisation :</strong> Atakpamé, Région des Plateaux, Togo — Coordonnées centrales : 7.382°N, 1.126°E</p>
+      <div class="parcelle-details">
+        <div class="parcelle-item"><strong>Superficie totale</strong><br>22,17 hectares</div>
+        <div class="parcelle-item"><strong>Occupation du sol</strong><br>Jachère, bas-fonds humides, zones de culture pluviale</div>
+        <div class="parcelle-item"><strong>Objectif principal</strong><br>Optimisation arachide, maïs, sorgho + agroforesterie</div>
+        <div class="parcelle-item"><strong>Contraintes majeures</strong><br>Stress hydrique (NDMI négatif), sols sableux pauvres</div>
+      </div>
+    </div>
+
+    <div class="card-modern" style="padding:0; overflow:hidden;">
+      <div style="padding: 1rem 1.5rem 0 1.5rem;">
+        <h2 class="section-title">🗺️ Carte interactive multi-couches</h2>
+        <p style="font-size:0.85rem; color:#5a6e4a;">Utilisez le contrôle des couches (en haut à droite) pour visualiser NDVI, NDMI, pente, santé du sol, favorabilité des cultures.</p>
+      </div>
+      <div class="map-wrapper"><div id="map"></div></div>
+    </div>
+  </div>
+
+  <!-- ========== ONGLET INDICATEURS ========== -->
+  <div id="indicateurs-tab" class="tab-content">
+    <div class="kpi-grid">
+      <div class="kpi-card"><div class="kpi-value">96%</div><div class="kpi-label">Arachide très favorable</div></div>
+      <div class="kpi-card"><div class="kpi-value">0.199-0.658</div><div class="kpi-label">NDVI (végétation)</div></div>
+      <div class="kpi-card"><div class="kpi-value">-0.35 à 0.085</div><div class="kpi-label">NDMI (humidité)</div></div>
+      <div class="kpi-card"><div class="kpi-value">0-6.7°</div><div class="kpi-label">Pente moyenne</div></div>
+    </div>
+    <div class="grid-2cols">
+      <div class="card-modern"><canvas id="ndviChart" height="220"></canvas><p style="text-align:center; font-size:0.75rem; margin-top:0.5rem; color:#5a6e4a;">Répartition NDVI</p></div>
+      <div class="card-modern"><canvas id="ndmiChart" height="220"></canvas><p style="text-align:center; font-size:0.75rem; margin-top:0.5rem; color:#5a6e4a;">Stress hydrique (NDMI)</p></div>
+      <div class="card-modern"><canvas id="penteChart" height="220"></canvas><p style="text-align:center; font-size:0.75rem; margin-top:0.5rem; color:#5a6e4a;">Classes de pente</p></div>
+    </div>
+    <div class="card-modern">
+      <h3 class="section-title">🧱 État de la fertilité des sols</h3>
+      <div class="soil-info">
+        <div class="soil-info-icon">🌾</div>
+        <div class="soil-info-text">
+          <strong>Zones à fertilité faible (non améliorées)</strong><br>
+          Environ <strong>7,8 hectares</strong> (35% de la surface) présentent un sol sableux pauvre en matière organique, nécessitant des apports réguliers de compost et des pratiques agroécologiques.
+          <div class="soil-stats">
+            <span class="soil-stat">✅ Sols fertiles : 14,4 ha (65%)</span>
+            <span class="soil-stat">⚠️ Sols à améliorer : 7,8 ha (35%)</span>
+          </div>
+          <p style="margin-top:0.5rem;">Ces zones ne sont pas dégradées de façon irréversible, mais un travail d’amendement et de restauration est recommandé.</p>
+        </div>
+      </div>
+      <p style="margin-top:1rem; font-size:0.9rem;">La couche "Santé du sol" sur la carte interactive localise ces parcelles.</p>
+    </div>
+    <div class="card-modern">
+      <h3 class="section-title">📈 Synthèse des indices</h3>
+      <p><strong>🌿 NDVI</strong> : biomasse faible à moyenne (0.199-0.658). Les zones les plus vertes correspondent aux bas-fonds.</p>
+      <p><strong>💧 NDMI</strong> : majoritairement négatif → stress hydrique modéré à sévère sur 18,2 ha (82%). Seuls 3,8 ha ont une humidité correcte.</p>
+      <p><strong>⛰️ Pente</strong> : 0-2° (56% : plat), 2-4° (33% : léger dénivelé), 4-6.7° (11% : risque d’érosion à surveiller).</p>
+    </div>
+  </div>
+
+  <!-- ========== ONGLET RECOMMANDATIONS ========== -->
+  <div id="recommandations-tab" class="tab-content">
+    <div class="card-modern">
+      <h2 class="section-title">🌿 Préconisations agronomiques</h2>
+      <ul class="reco-list">
+        <li><strong>Fertilité</strong> : apport régulier de fumier ou compost (sol sableux).</li>
+        <li><strong>Eau & érosion</strong> : cordons pierreux et bandes enherbées (vetiver) sur les pentes >4°.</li>
+        <li><strong>Zones non améliorées</strong> : creuser des demi‑lunes ou zaï pour concentrer l’eau et la matière organique.</li>
+        <li><strong>Arbres fertilitaires</strong> : planter Faidherbia albida, Néré, Gliricidia, Moringa en haies brise‑vent.</li>
+        <li><strong>Rotation</strong> : arachide → maïs/sorgho pour maintenir la fertilité.</li>
+        <li><strong>Semis précoce</strong> : début de saison des pluies (mars‑avril).</li>
+      </ul>
+    </div>
+    <div class="card-modern">
+      <h3 class="section-title">📅 Calendrier indicatif</h3>
+      <p>✅ Préparation du sol et fumure : février-mars<br>
+      🌱 Semis de l'arachide : dès les premières pluies (mars-avril)<br>
+      🌾 Repousses et rotation céréales : juin-juillet<br>
+      💧 Surveillance NDMI : mai à septembre (irrigation si nécessaire)<br>
+      📊 Suivi NDVI toutes les 2 semaines via la carte interactive</p>
+    </div>
+  </div>
+
+  <!-- ========== ONGLET SUIVI ========== -->
+  <div id="suivi-tab" class="tab-content">
+    <div class="service-card">
+      <div class="service-icon">📡</div>
+      <h3 style="font-size:1.5rem; margin-bottom:0.5rem;">Service de suivi personnalisé</h3>
+      <p style="margin-bottom:1.2rem;">Vous souhaitez un monitoring régulier de vos parcelles ?<br>
+      <strong>SmartAgroMap</strong> vous propose un abonnement mensuel incluant :</p>
+      <ul style="text-align:left; max-width:400px; margin:0 auto 1.5rem auto;">
+        <li>✅ Mise à jour hebdomadaire des indices NDVI, NDMI, SAVI</li>
+        <li>✅ Alertes précoces de stress hydrique ou érosion</li>
+        <li>✅ Rapport mensuel personnalisé avec recommandations</li>
+        <li>✅ Accès à un tableau de bord dédié</li>
+      </ul>
+      <button class="btn-outline" onclick="alert('Merci de votre intérêt ! Un conseiller vous contactera prochainement.')">📩 Je souhaite être recontacté</button>
+      <p style="margin-top:1rem; font-size:0.75rem; color:#5a6e4a;">* Service disponible à partir de mai 2026 – version de démonstration</p>
+    </div>
+  </div>
+
+  <!-- ========== ONGLET RAPPORT ========== -->
+  <div id="rapport-tab" class="tab-content">
+    <div class="card-modern" style="text-align: center;">
+      <h2 class="section-title" style="justify-content: center;">📄 Rapport final d’étude</h2>
+      <p style="margin-bottom: 1.5rem;">Téléchargez le diagnostic complet au format PDF (analyse des sols, indices, cartes, préconisations).</p>
+      <a class="btn-pdf" href="rapport_final.pdf" download>📄 Télécharger le rapport (PDF)</a>
+    </div>
+  </div>
+</main>
+
+<footer>
+  © SmartAgroMap – Marieme Lissa Keita, Ingénieure Géomaticienne – Données : Sentinel‑2, SRTM, SoilGrids, CHIRPS/ANAMET
+</footer>
+
+<!-- Scripts QGIS2WEB (intégrale, identique à la version fonctionnelle précédente) -->
+<script src="qgis2web_export/js/qgis2web_expressions.js"></script>
+<script src="qgis2web_export/js/leaflet.js"></script>
+<script src="qgis2web_export/js/L.Control.Layers.Tree.min.js"></script>
+<script src="qgis2web_export/js/L.Control.Locate.min.js"></script>
+<script src="qgis2web_export/js/leaflet.rotatedMarker.js"></script>
+<script src="qgis2web_export/js/leaflet.pattern.js"></script>
+<script src="qgis2web_export/js/leaflet-hash.js"></script>
+<script src="qgis2web_export/js/Autolinker.min.js"></script>
+<script src="qgis2web_export/js/rbush.min.js"></script>
+<script src="qgis2web_export/js/labelgun.min.js"></script>
+<script src="qgis2web_export/js/labels.js"></script>
+<script src="qgis2web_export/js/leaflet.photon.js"></script>
+<script src="qgis2web_export/js/leaflet-measure.js"></script>
+<script src="qgis2web_export/data/Arachide_1.js"></script>
+<script src="qgis2web_export/data/Gombo_2.js"></script>
+<script src="qgis2web_export/data/Mas_3.js"></script>
+<script src="qgis2web_export/data/Piments_4.js"></script>
+<script src="qgis2web_export/data/Sorgho_5.js"></script>
+<script src="qgis2web_export/data/NDMI_6.js"></script>
+<script src="qgis2web_export/data/NDVI_7.js"></script>
+<script src="qgis2web_export/data/Santdusol_8.js"></script>
+<script src="qgis2web_export/data/Penteendegrs_9.js"></script>
+<script src="qgis2web_export/data/LimiteParcelle_10.js"></script>
+<script src="qgis2web_export/data/Coordonnesdelaparcelle_11.js"></script>
+
+<script>
+  // Gestion des onglets
+  const tabs = document.querySelectorAll('.tab-btn');
+  const contents = document.querySelectorAll('.tab-content');
+  tabs.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const tabId = btn.getAttribute('data-tab');
+      contents.forEach(c => c.classList.remove('active-tab'));
+      document.getElementById(`${tabId}-tab`).classList.add('active-tab');
+      tabs.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      if (tabId === 'carte' && map) setTimeout(() => map.invalidateSize(), 100);
+    });
+  });
+
+  // Initialisation de la carte (identique à la version finale précédente)
+  var map = L.map('map', { zoomControl: false, maxZoom: 28, minZoom: 4 })
+      .fitBounds([[7.373374269483139,1.1127854837112017],[7.386386251671033,1.1370231099988932]]);
+  var hash = new L.Hash(map);
+  map.attributionControl.setPrefix('<a href="https://github.com/tomchadwin/qgis2web">qgis2web</a> · Leaflet');
+  var autolinker = new Autolinker({ truncate: { length: 30, location: 'smart' } });
+
+  function removeEmptyRowsFromPopupContent(content, feature) {
+    var tempDiv = document.createElement('div');
+    tempDiv.innerHTML = content;
+    var rows = tempDiv.querySelectorAll('tr');
+    for (var i = 0; i < rows.length; i++) {
+      var td = rows[i].querySelector('td.visible-with-data');
+      if (td && td.classList.contains('visible-with-data') && feature.properties[td.id] == null) {
+        rows[i].parentNode.removeChild(rows[i]);
+      }
+    }
+    return tempDiv.innerHTML;
+  }
+
+  function addClassToPopupIfMedia(content, popup) {
+    var tempDiv = document.createElement('div');
+    tempDiv.innerHTML = content;
+    var imgTd = tempDiv.querySelector('td img');
+    if (imgTd && /\.(jpg|jpeg|png|gif|bmp|webp|avif)$/i.test(imgTd.getAttribute('src'))) {
+      popup._contentNode.classList.add('media');
+      setTimeout(function() { popup.update(); }, 10);
+    }
+  }
+
+  L.control.zoom({ position: 'topleft' }).addTo(map);
+  L.control.locate({ locateOptions: { maxZoom: 19 } }).addTo(map);
+  var measureControl = new L.Control.Measure({ position: 'topleft', primaryLengthUnit: 'meters', secondaryLengthUnit: 'kilometers', primaryAreaUnit: 'sqmeters', secondaryAreaUnit: 'hectares' });
+  measureControl.addTo(map);
+  document.getElementsByClassName('leaflet-control-measure-toggle')[0].className += ' fas fa-ruler';
+
+  var bounds_group = new L.featureGroup([]);
+  map.createPane('pane_BasemapGoogleSatellite_0');
+  map.getPane('pane_BasemapGoogleSatellite_0').style.zIndex = 400;
+  var layer_BasemapGoogleSatellite_0 = L.tileLayer('https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
+    pane: 'pane_BasemapGoogleSatellite_0',
+    opacity: 0.6,
+    minZoom: 4,
+    maxZoom: 28
+  }).addTo(map);
+
+  function makePopup(props, keys) {
+    return keys.map(k => props[k] != null ? '<tr><td colspan="2">' + autolinker.link(String(props[k])) + '</td></tr>' : '').join('');
+  }
+
+  // --- Définition de toutes les couches (reprise intégrale du code fonctionnel) ---
+  function pop_Arachide_1(f,l){ var c=makePopup(f.properties,['fid','DN','AREA']); c=removeEmptyRowsFromPopupContent(c,f); l.on('popupopen',function(e){addClassToPopupIfMedia(c,e.popup);}); l.bindPopup(c,{maxHeight:400}); }
+  function style_Arachide_1_0(f){ switch(String(f.properties['DN'])){ case'1':return{pane:'pane_Arachide_1',stroke:false,fill:true,fillOpacity:1,fillColor:'rgba(255,122,99,0.8)',interactive:true}; case'2':return{pane:'pane_Arachide_1',stroke:false,fill:true,fillOpacity:1,fillColor:'rgba(238,255,134,0.8)',interactive:true}; case'3':return{pane:'pane_Arachide_1',stroke:false,fill:true,fillOpacity:1,fillColor:'rgba(98,176,95,0.8)',interactive:true}; default:return{}; } }
+  map.createPane('pane_Arachide_1'); map.getPane('pane_Arachide_1').style.zIndex=401;
+  var layer_Arachide_1 = new L.geoJson(json_Arachide_1, { attribution: '', interactive: true, dataVar: 'json_Arachide_1', layerName: 'layer_Arachide_1', pane: 'pane_Arachide_1', onEachFeature: pop_Arachide_1, style: style_Arachide_1_0 });
+  bounds_group.addLayer(layer_Arachide_1); map.addLayer(layer_Arachide_1);
+
+  function pop_Gombo_2(f,l){ var c=makePopup(f.properties,['fid','DN','AREA']); c=removeEmptyRowsFromPopupContent(c,f); l.on('popupopen',function(e){addClassToPopupIfMedia(c,e.popup);}); l.bindPopup(c,{maxHeight:400}); }
+  function style_Gombo_2_0(f){ switch(String(f.properties['DN'])){ case'1':return{pane:'pane_Gombo_2',stroke:false,fill:true,fillOpacity:1,fillColor:'rgba(255,122,99,0.8)',interactive:true}; case'2':return{pane:'pane_Gombo_2',stroke:false,fill:true,fillOpacity:1,fillColor:'rgba(238,255,134,0.8)',interactive:true}; case'3':return{pane:'pane_Gombo_2',stroke:false,fill:true,fillOpacity:1,fillColor:'rgba(98,176,95,0.8)',interactive:true}; default:return{}; } }
+  map.createPane('pane_Gombo_2'); map.getPane('pane_Gombo_2').style.zIndex=402;
+  var layer_Gombo_2 = new L.geoJson(json_Gombo_2, { attribution: '', interactive: true, dataVar: 'json_Gombo_2', layerName: 'layer_Gombo_2', pane: 'pane_Gombo_2', onEachFeature: pop_Gombo_2, style: style_Gombo_2_0 });
+  bounds_group.addLayer(layer_Gombo_2); map.addLayer(layer_Gombo_2);
+
+  function pop_Mas_3(f,l){ var c=makePopup(f.properties,['fid','DN','AREA']); c=removeEmptyRowsFromPopupContent(c,f); l.on('popupopen',function(e){addClassToPopupIfMedia(c,e.popup);}); l.bindPopup(c,{maxHeight:400}); }
+  function style_Mas_3_0(f){ switch(String(f.properties['DN'])){ case'1':return{pane:'pane_Mas_3',stroke:false,fill:true,fillOpacity:1,fillColor:'rgba(255,122,99,0.8)',interactive:true}; case'2':return{pane:'pane_Mas_3',stroke:false,fill:true,fillOpacity:1,fillColor:'rgba(238,255,134,0.8)',interactive:true}; case'3':return{pane:'pane_Mas_3',stroke:false,fill:true,fillOpacity:1,fillColor:'rgba(98,176,95,0.8)',interactive:true}; default:return{}; } }
+  map.createPane('pane_Mas_3'); map.getPane('pane_Mas_3').style.zIndex=403;
+  var layer_Mas_3 = new L.geoJson(json_Mas_3, { attribution: '', interactive: true, dataVar: 'json_Mas_3', layerName: 'layer_Mas_3', pane: 'pane_Mas_3', onEachFeature: pop_Mas_3, style: style_Mas_3_0 });
+  bounds_group.addLayer(layer_Mas_3); map.addLayer(layer_Mas_3);
+
+  function pop_Piments_4(f,l){ var c=makePopup(f.properties,['fid','DN','AREA']); c=removeEmptyRowsFromPopupContent(c,f); l.on('popupopen',function(e){addClassToPopupIfMedia(c,e.popup);}); l.bindPopup(c,{maxHeight:400}); }
+  function style_Piments_4_0(f){ switch(String(f.properties['DN'])){ case'1':return{pane:'pane_Piments_4',stroke:false,fill:true,fillOpacity:1,fillColor:'rgba(255,122,99,0.8)',interactive:true}; case'2':return{pane:'pane_Piments_4',stroke:false,fill:true,fillOpacity:1,fillColor:'rgba(238,255,134,0.8)',interactive:true}; case'3':return{pane:'pane_Piments_4',stroke:false,fill:true,fillOpacity:1,fillColor:'rgba(98,176,95,0.8)',interactive:true}; default:return{}; } }
+  map.createPane('pane_Piments_4'); map.getPane('pane_Piments_4').style.zIndex=404;
+  var layer_Piments_4 = new L.geoJson(json_Piments_4, { attribution: '', interactive: true, dataVar: 'json_Piments_4', layerName: 'layer_Piments_4', pane: 'pane_Piments_4', onEachFeature: pop_Piments_4, style: style_Piments_4_0 });
+  bounds_group.addLayer(layer_Piments_4); map.addLayer(layer_Piments_4);
+
+  function pop_Sorgho_5(f,l){ var c=makePopup(f.properties,['fid','DN','AREA']); c=removeEmptyRowsFromPopupContent(c,f); l.on('popupopen',function(e){addClassToPopupIfMedia(c,e.popup);}); l.bindPopup(c,{maxHeight:400}); }
+  function style_Sorgho_5_0(f){ switch(String(f.properties['DN'])){ case'1':return{pane:'pane_Sorgho_5',stroke:false,fill:true,fillOpacity:1,fillColor:'rgba(255,122,99,0.8)',interactive:true}; case'2':return{pane:'pane_Sorgho_5',stroke:false,fill:true,fillOpacity:1,fillColor:'rgba(238,255,134,0.8)',interactive:true}; case'3':return{pane:'pane_Sorgho_5',stroke:false,fill:true,fillOpacity:1,fillColor:'rgba(98,176,95,0.8)',interactive:true}; default:return{}; } }
+  map.createPane('pane_Sorgho_5'); map.getPane('pane_Sorgho_5').style.zIndex=405;
+  var layer_Sorgho_5 = new L.geoJson(json_Sorgho_5, { attribution: '', interactive: true, dataVar: 'json_Sorgho_5', layerName: 'layer_Sorgho_5', pane: 'pane_Sorgho_5', onEachFeature: pop_Sorgho_5, style: style_Sorgho_5_0 });
+  bounds_group.addLayer(layer_Sorgho_5); map.addLayer(layer_Sorgho_5);
+
+  function pop_NDMI_6(f,l){ var c=makePopup(f.properties,['fid','DN','CLASSE','VALEUR','Interpretation','AREA']); c=removeEmptyRowsFromPopupContent(c,f); l.on('popupopen',function(e){addClassToPopupIfMedia(c,e.popup);}); l.bindPopup(c,{maxHeight:400}); }
+  function style_NDMI_6_0(f){ switch(String(f.properties['VALEUR'])){ case'< -0.1':return{pane:'pane_NDMI_6',opacity:1,color:'rgba(35,35,35,1)',weight:1,fill:true,fillOpacity:1,fillColor:'rgba(115,178,216,1)',interactive:true}; case'-0.1 à 0.1':return{pane:'pane_NDMI_6',opacity:1,color:'rgba(35,35,35,1)',weight:1,fill:true,fillOpacity:1,fillColor:'rgba(8,48,107,1)',interactive:true}; default:return{}; } }
+  map.createPane('pane_NDMI_6'); map.getPane('pane_NDMI_6').style.zIndex=406;
+  var layer_NDMI_6 = new L.geoJson(json_NDMI_6, { attribution: '', interactive: true, dataVar: 'json_NDMI_6', layerName: 'layer_NDMI_6', pane: 'pane_NDMI_6', onEachFeature: pop_NDMI_6, style: style_NDMI_6_0 });
+  bounds_group.addLayer(layer_NDMI_6); map.addLayer(layer_NDMI_6);
+
+  function pop_NDVI_7(f,l){ var c=makePopup(f.properties,['fid','VALEUR','interpretation','Classe','AREA']); c=removeEmptyRowsFromPopupContent(c,f); l.on('popupopen',function(e){addClassToPopupIfMedia(c,e.popup);}); l.bindPopup(c,{maxHeight:400}); }
+  function style_NDVI_7_0(f){ switch(String(f.properties['VALEUR'])){ case'0.199 à 0.35':return{pane:'pane_NDVI_7',opacity:1,color:'rgba(83,83,83,0.8)',weight:1,fill:true,fillOpacity:1,fillColor:'rgba(255,180,74,0.8)',interactive:true}; case'0.35 à 0.50':return{pane:'pane_NDVI_7',opacity:1,color:'rgba(83,83,83,0.8)',weight:1,fill:true,fillOpacity:1,fillColor:'rgba(238,255,134,0.8)',interactive:true}; case'0.50 à 0.658':return{pane:'pane_NDVI_7',opacity:1,color:'rgba(83,83,83,0.8)',weight:1,fill:true,fillOpacity:1,fillColor:'rgba(36,169,31,0.8)',interactive:true}; default:return{}; } }
+  map.createPane('pane_NDVI_7'); map.getPane('pane_NDVI_7').style.zIndex=407;
+  var layer_NDVI_7 = new L.geoJson(json_NDVI_7, { attribution: '', interactive: true, dataVar: 'json_NDVI_7', layerName: 'layer_NDVI_7', pane: 'pane_NDVI_7', onEachFeature: pop_NDVI_7, style: style_NDVI_7_0 });
+  bounds_group.addLayer(layer_NDVI_7); map.addLayer(layer_NDVI_7);
+
+  function pop_Santdusol_8(f,l){ var c=makePopup(f.properties,['fid','DN','AREA','CLASSE']); c=removeEmptyRowsFromPopupContent(c,f); l.on('popupopen',function(e){addClassToPopupIfMedia(c,e.popup);}); l.bindPopup(c,{maxHeight:400}); }
+  function style_Santdusol_8_0(f){ switch(String(f.properties['DN'])){ case'0':return{pane:'pane_Santdusol_8',opacity:1,color:'rgba(62,197,0,1)',weight:1,fill:true,fillOpacity:1,fillColor:'rgba(177,248,156,0.3)',interactive:true}; case'1':return{pane:'pane_Santdusol_8',opacity:1,color:'rgba(215,62,36,1)',weight:1,fill:true,fillOpacity:1,fillColor:'rgba(215,62,36,1)',interactive:true}; default:return{}; } }
+  map.createPane('pane_Santdusol_8'); map.getPane('pane_Santdusol_8').style.zIndex=408;
+  var layer_Santdusol_8 = new L.geoJson(json_Santdusol_8, { attribution: '', interactive: true, dataVar: 'json_Santdusol_8', layerName: 'layer_Santdusol_8', pane: 'pane_Santdusol_8', onEachFeature: pop_Santdusol_8, style: style_Santdusol_8_0 });
+  bounds_group.addLayer(layer_Santdusol_8); map.addLayer(layer_Santdusol_8);
+
+  function pop_Penteendegrs_9(f,l){ var c=makePopup(f.properties,['fid','VALEUR','CLASSE','Interpretation','AREA']); c=removeEmptyRowsFromPopupContent(c,f); l.on('popupopen',function(e){addClassToPopupIfMedia(c,e.popup);}); l.bindPopup(c,{maxHeight:400}); }
+  function style_Penteendegrs_9_0(f){ switch(String(f.properties['VALEUR'])){ case'0 à 2':return{pane:'pane_Penteendegrs_9',opacity:1,color:'rgba(35,35,35,0.8)',weight:1,fill:true,fillOpacity:1,fillColor:'rgba(26,150,65,0.8)',interactive:true}; case'2 à 4':return{pane:'pane_Penteendegrs_9',opacity:1,color:'rgba(35,35,35,0.8)',weight:1,fill:true,fillOpacity:1,fillColor:'rgba(255,255,192,0.8)',interactive:true}; case'4 à 6.7':return{pane:'pane_Penteendegrs_9',opacity:1,color:'rgba(35,35,35,0.8)',weight:1,fill:true,fillOpacity:1,fillColor:'rgba(215,25,28,0.8)',interactive:true}; default:return{}; } }
+  map.createPane('pane_Penteendegrs_9'); map.getPane('pane_Penteendegrs_9').style.zIndex=409;
+  var layer_Penteendegrs_9 = new L.geoJson(json_Penteendegrs_9, { attribution: '', interactive: true, dataVar: 'json_Penteendegrs_9', layerName: 'layer_Penteendegrs_9', pane: 'pane_Penteendegrs_9', onEachFeature: pop_Penteendegrs_9, style: style_Penteendegrs_9_0 });
+  bounds_group.addLayer(layer_Penteendegrs_9); map.addLayer(layer_Penteendegrs_9);
+
+  function pop_LimiteParcelle_10(f,l){ var c=makePopup(f.properties,['fid','AREA']); c=removeEmptyRowsFromPopupContent(c,f); l.on('popupopen',function(e){addClassToPopupIfMedia(c,e.popup);}); l.bindPopup(c,{maxHeight:400}); }
+  function style_LimiteParcelle_10_0(){ return{pane:'pane_LimiteParcelle_10',opacity:1,color:'rgba(228,26,28,1)',dashArray:'',lineCap:'square',lineJoin:'bevel',weight:4,fillOpacity:0,interactive:true}; }
+  map.createPane('pane_LimiteParcelle_10'); map.getPane('pane_LimiteParcelle_10').style.zIndex=410;
+  var layer_LimiteParcelle_10 = new L.geoJson(json_LimiteParcelle_10, { attribution: '', interactive: true, dataVar: 'json_LimiteParcelle_10', layerName: 'layer_LimiteParcelle_10', pane: 'pane_LimiteParcelle_10', onEachFeature: pop_LimiteParcelle_10, style: style_LimiteParcelle_10_0 });
+  bounds_group.addLayer(layer_LimiteParcelle_10); map.addLayer(layer_LimiteParcelle_10);
+
+  function pop_Coordonnesdelaparcelle_11(f,l){ var c=makePopup(f.properties,['fid','AREA','X','Y']); c=removeEmptyRowsFromPopupContent(c,f); l.on('popupopen',function(e){addClassToPopupIfMedia(c,e.popup);}); l.bindPopup(c,{maxHeight:400}); }
+  function style_Coordonnesdelaparcelle_11_0(){ return{pane:'pane_Coordonnesdelaparcelle_11',radius:8,opacity:1,color:'rgba(255,0,0,1)',dashArray:'',lineCap:'butt',lineJoin:'miter',weight:2,fill:true,fillOpacity:1,fillColor:'rgba(255,255,255,1)',interactive:true}; }
+  map.createPane('pane_Coordonnesdelaparcelle_11'); map.getPane('pane_Coordonnesdelaparcelle_11').style.zIndex=411;
+  var layer_Coordonnesdelaparcelle_11 = new L.geoJson(json_Coordonnesdelaparcelle_11, { attribution: '', interactive: true, dataVar: 'json_Coordonnesdelaparcelle_11', layerName: 'layer_Coordonnesdelaparcelle_11', pane: 'pane_Coordonnesdelaparcelle_11', onEachFeature: pop_Coordonnesdelaparcelle_11, pointToLayer: function(f,ll){ return L.circleMarker(ll, style_Coordonnesdelaparcelle_11_0(f)); } });
+  bounds_group.addLayer(layer_Coordonnesdelaparcelle_11); map.addLayer(layer_Coordonnesdelaparcelle_11);
+
+  var overlaysTree = [
+    {label:'<img src="qgis2web_export/legend/Coordonnesdelaparcelle_11.png"/> Coordonnées', layer:layer_Coordonnesdelaparcelle_11},
+    {label:'<img src="qgis2web_export/legend/LimiteParcelle_10.png"/> Limite parcelle', layer:layer_LimiteParcelle_10},
+    {label:'Pente', layer:layer_Penteendegrs_9},
+    {label:'Santé du sol', layer:layer_Santdusol_8},
+    {label:'<b>Indices</b>', selectAllCheckbox:true, children:[
+      {label:'NDVI', layer:layer_NDVI_7},
+      {label:'NDMI', layer:layer_NDMI_6}
+    ]},
+    {label:'<b>Favorabilité</b>', selectAllCheckbox:true, children:[
+      {label:'Sorgho', layer:layer_Sorgho_5},
+      {label:'Piments', layer:layer_Piments_4},
+      {label:'Maïs', layer:layer_Mas_3},
+      {label:'Gombo', layer:layer_Gombo_2},
+      {label:'Arachide', layer:layer_Arachide_1}
+    ]},
+    {label:'Satellite', layer:layer_BasemapGoogleSatellite_0}
+  ];
+  L.control.layers.tree(null, overlaysTree, { collapsed: false }).addTo(map);
+
+  var i = 0;
+  layer_Coordonnesdelaparcelle_11.eachLayer(function(layer) {
+    var ctx = { feature: layer.feature, variables: {} };
+    layer.bindTooltip((exp_label_Coordonnesdelaparcelle_11_eval_expression(ctx) !== null ? '<div style="color:#323232;font-size:10pt;font-weight:bold;">' + exp_label_Coordonnesdelaparcelle_11_eval_expression(ctx) + '</div>' : ''), { permanent: true, offset: [-0, -16], className: 'css_Coordonnesdelaparcelle_11' });
+    labels.push(layer);
+    totalMarkers += 1;
+    layer.added = true;
+    addLabel(layer, i);
+    i++;
+  });
+  resetLabels([layer_Coordonnesdelaparcelle_11]);
+  map.on('zoomend', function() { resetLabels([layer_Coordonnesdelaparcelle_11]); });
+  map.on('layeradd', function() { resetLabels([layer_Coordonnesdelaparcelle_11]); });
+  map.on('layerremove', function() { resetLabels([layer_Coordonnesdelaparcelle_11]); });
+
+  // ========== GRAPHIQUES ==========
+  new Chart(document.getElementById('ndviChart'), {
+    type: 'pie',
+    data: { labels: ['NDVI faible (0.199-0.35)', 'NDVI moyen (0.35-0.50)', 'NDVI bon (0.50-0.658)'],
+            datasets: [{ data: [35, 48, 17], backgroundColor: ['#ffb44a', '#eeff86', '#24a91f'], borderWidth: 0 }] },
+    options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { font: { size: 11 } } } } }
+  });
+  new Chart(document.getElementById('ndmiChart'), {
+    type: 'bar',
+    data: { labels: ['Stress hydrique sévère', 'Humidité modérée'],
+            datasets: [{ label: 'Superficie (ha)', data: [18.2, 3.8], backgroundColor: ['#73b2d8', '#08306b'], borderRadius: 8, barPercentage: 0.6 }] },
+    options: { responsive: true, plugins: { legend: { position: 'bottom' } }, scales: { y: { beginAtZero: true, grid: { color: '#e2e8dc' } } } }
+  });
+  new Chart(document.getElementById('penteChart'), {
+    type: 'bar',
+    data: { labels: ['Pente 0-2°', 'Pente 2-4°', 'Pente 4-6.7°'],
+            datasets: [{ label: 'Superficie (ha)', data: [12.4, 7.3, 2.5], backgroundColor: ['#1a9641', '#ffffc0', '#d7191c'], borderRadius: 8 }] },
+    options: { responsive: true, plugins: { legend: { position: 'bottom' } }, scales: { y: { beginAtZero: true } } }
+  });
+</script>
+</body>
+</html>

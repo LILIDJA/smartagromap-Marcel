@@ -1,0 +1,1008 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="initial-scale=1,user-scalable=no,maximum-scale=1,width=device-width">
+        <meta name="mobile-web-app-capable" content="yes">
+        <meta name="apple-mobile-web-app-capable" content="yes">
+        <link rel="stylesheet" href="css/leaflet.css">
+        <link rel="stylesheet" href="css/L.Control.Layers.Tree.css">
+        <link rel="stylesheet" href="css/L.Control.Locate.min.css">
+        <link rel="stylesheet" href="css/qgis2web.css">
+        <link rel="stylesheet" href="css/fontawesome-all.min.css">
+        <link rel="stylesheet" href="css/leaflet.photon.css">
+        <link rel="stylesheet" href="css/leaflet-measure.css">
+        <style>
+        html, body, #map {
+            width: 100%;
+            height: 100%;
+            padding: 0;
+            margin: 0;
+        }
+        </style>
+        <title></title>
+    </head>
+    <body>
+        <div id="map">
+        </div>
+        <script src="js/qgis2web_expressions.js"></script>
+        <script src="js/leaflet.js"></script>
+        <script src="js/L.Control.Layers.Tree.min.js"></script>
+        <script src="js/L.Control.Locate.min.js"></script>
+        <script src="js/leaflet.rotatedMarker.js"></script>
+        <script src="js/leaflet.pattern.js"></script>
+        <script src="js/leaflet-hash.js"></script>
+        <script src="js/Autolinker.min.js"></script>
+        <script src="js/rbush.min.js"></script>
+        <script src="js/labelgun.min.js"></script>
+        <script src="js/labels.js"></script>
+        <script src="js/leaflet.photon.js"></script>
+        <script src="js/leaflet-measure.js"></script>
+        <script src="data/Arachide_1.js"></script>
+        <script src="data/Gombo_2.js"></script>
+        <script src="data/Mas_3.js"></script>
+        <script src="data/Piments_4.js"></script>
+        <script src="data/Sorgho_5.js"></script>
+        <script src="data/NDMI_6.js"></script>
+        <script src="data/NDVI_7.js"></script>
+        <script src="data/Santdusol_8.js"></script>
+        <script src="data/Penteendegrs_9.js"></script>
+        <script src="data/LimiteParcelle_10.js"></script>
+        <script src="data/Coordonnesdelaparcelle_11.js"></script>
+        <script>
+        var map = L.map('map', {
+            zoomControl:false, maxZoom:28, minZoom:4
+        }).fitBounds([[7.373374269483139,1.1127854837112017],[7.386386251671033,1.1370231099988932]]);
+        var hash = new L.Hash(map);
+        map.attributionControl.setPrefix('<a href="https://github.com/tomchadwin/qgis2web" target="_blank">qgis2web</a> &middot; <a href="https://leafletjs.com" title="A JS library for interactive maps">Leaflet</a> &middot; <a href="https://qgis.org">QGIS</a>');
+        var autolinker = new Autolinker({truncate: {length: 30, location: 'smart'}});
+        // remove popup's row if "visible-with-data"
+        function removeEmptyRowsFromPopupContent(content, feature) {
+         var tempDiv = document.createElement('div');
+         tempDiv.innerHTML = content;
+         var rows = tempDiv.querySelectorAll('tr');
+         for (var i = 0; i < rows.length; i++) {
+             var td = rows[i].querySelector('td.visible-with-data');
+             var key = td ? td.id : '';
+             if (td && td.classList.contains('visible-with-data') && feature.properties[key] == null) {
+                 rows[i].parentNode.removeChild(rows[i]);
+             }
+         }
+         return tempDiv.innerHTML;
+        }
+        // modify popup if contains media
+        function addClassToPopupIfMedia(content, popup) {
+            var tempDiv = document.createElement('div');
+            tempDiv.innerHTML = content;
+            var imgTd = tempDiv.querySelector('td img');
+            if (imgTd) {
+                var src = imgTd.getAttribute('src');
+                if (/\.(jpg|jpeg|png|gif|bmp|webp|avif)$/i.test(src)) {
+                    popup._contentNode.classList.add('media');
+                    setTimeout(function() {
+                        popup.update();
+                    }, 10);
+                } else if (/\.(mp3|wav|ogg|aac)$/i.test(src)) {
+                    var audio = document.createElement('audio');
+                    audio.controls = true;
+                    audio.src = src;
+                    imgTd.parentNode.replaceChild(audio, imgTd);
+                    popup._contentNode.classList.add('media');
+                    setTimeout(function() {
+                        popup.setContent(tempDiv.innerHTML);
+                        popup.update();
+                    }, 10);
+                } else if (/\.(mp4|webm|ogg|mov)$/i.test(src)) {
+                    var video = document.createElement('video');
+                    video.controls = true;
+                    video.src = src;
+                    video.style.width = "400px";
+                    video.style.height = "300px";
+                    video.style.maxHeight = "60vh";
+                    video.style.maxWidth = "60vw";
+                    imgTd.parentNode.replaceChild(video, imgTd);
+                    popup._contentNode.classList.add('media');
+                    // Aggiorna il popup quando il video carica i metadati
+                    video.addEventListener('loadedmetadata', function() {
+                        popup.update();
+                    });
+                    setTimeout(function() {
+                        popup.setContent(tempDiv.innerHTML);
+                        popup.update();
+                    }, 10);
+                } else {
+                    popup._contentNode.classList.remove('media');
+                }
+            } else {
+                popup._contentNode.classList.remove('media');
+            }
+        }
+        var zoomControl = L.control.zoom({
+            position: 'topleft'
+        }).addTo(map);
+        L.control.locate({locateOptions: {maxZoom: 19}}).addTo(map);
+        var measureControl = new L.Control.Measure({
+            position: 'topleft',
+            primaryLengthUnit: 'meters',
+            secondaryLengthUnit: 'kilometers',
+            primaryAreaUnit: 'sqmeters',
+            secondaryAreaUnit: 'hectares'
+        });
+        measureControl.addTo(map);
+        document.getElementsByClassName('leaflet-control-measure-toggle')[0].innerHTML = '';
+        document.getElementsByClassName('leaflet-control-measure-toggle')[0].className += ' fas fa-ruler';
+        var bounds_group = new L.featureGroup([]);
+        function setBounds() {
+        }
+        map.createPane('pane_BasemapGoogleSatellite_0');
+        map.getPane('pane_BasemapGoogleSatellite_0').style.zIndex = 400;
+        var layer_BasemapGoogleSatellite_0 = L.tileLayer('https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
+            pane: 'pane_BasemapGoogleSatellite_0',
+            opacity: 0.597,
+            attribution: '',
+            minZoom: 4,
+            maxZoom: 28,
+        });
+        layer_BasemapGoogleSatellite_0;
+        map.addLayer(layer_BasemapGoogleSatellite_0);
+        function pop_Arachide_1(feature, layer) {
+            var popupContent = '<table>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['fid'] !== null ? autolinker.link(String(feature.properties['fid']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['DN'] !== null ? autolinker.link(String(feature.properties['DN']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['AREA'] !== null ? autolinker.link(String(feature.properties['AREA']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                </table>';
+            var content = removeEmptyRowsFromPopupContent(popupContent, feature);
+			layer.on('popupopen', function(e) {
+				addClassToPopupIfMedia(content, e.popup);
+			});
+			layer.bindPopup(content, { maxHeight: 400 });
+        }
+
+        function style_Arachide_1_0(feature) {
+            switch(String(feature.properties['DN'])) {
+                case '1':
+                    return {
+                pane: 'pane_Arachide_1',
+                stroke: false, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(255,122,99,0.8)',
+                interactive: true,
+            }
+                    break;
+                case '2':
+                    return {
+                pane: 'pane_Arachide_1',
+                stroke: false, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(238,255,134,0.8)',
+                interactive: true,
+            }
+                    break;
+                case '3':
+                    return {
+                pane: 'pane_Arachide_1',
+                stroke: false, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(98,176,95,0.8)',
+                interactive: true,
+            }
+                    break;
+            }
+        }
+        map.createPane('pane_Arachide_1');
+        map.getPane('pane_Arachide_1').style.zIndex = 401;
+        map.getPane('pane_Arachide_1').style['mix-blend-mode'] = 'normal';
+        var layer_Arachide_1 = new L.geoJson(json_Arachide_1, {
+            attribution: '',
+            interactive: true,
+            dataVar: 'json_Arachide_1',
+            layerName: 'layer_Arachide_1',
+            pane: 'pane_Arachide_1',
+            onEachFeature: pop_Arachide_1,
+            style: style_Arachide_1_0,
+        });
+        bounds_group.addLayer(layer_Arachide_1);
+        map.addLayer(layer_Arachide_1);
+        function pop_Gombo_2(feature, layer) {
+            var popupContent = '<table>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['fid'] !== null ? autolinker.link(String(feature.properties['fid']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['DN'] !== null ? autolinker.link(String(feature.properties['DN']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['AREA'] !== null ? autolinker.link(String(feature.properties['AREA']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                </table>';
+            var content = removeEmptyRowsFromPopupContent(popupContent, feature);
+			layer.on('popupopen', function(e) {
+				addClassToPopupIfMedia(content, e.popup);
+			});
+			layer.bindPopup(content, { maxHeight: 400 });
+        }
+
+        function style_Gombo_2_0(feature) {
+            switch(String(feature.properties['DN'])) {
+                case '1':
+                    return {
+                pane: 'pane_Gombo_2',
+                stroke: false, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(255,122,99,0.8)',
+                interactive: true,
+            }
+                    break;
+                case '2':
+                    return {
+                pane: 'pane_Gombo_2',
+                stroke: false, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(238,255,134,0.8)',
+                interactive: true,
+            }
+                    break;
+                case '3':
+                    return {
+                pane: 'pane_Gombo_2',
+                stroke: false, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(98,176,95,0.8)',
+                interactive: true,
+            }
+                    break;
+            }
+        }
+        map.createPane('pane_Gombo_2');
+        map.getPane('pane_Gombo_2').style.zIndex = 402;
+        map.getPane('pane_Gombo_2').style['mix-blend-mode'] = 'normal';
+        var layer_Gombo_2 = new L.geoJson(json_Gombo_2, {
+            attribution: '',
+            interactive: true,
+            dataVar: 'json_Gombo_2',
+            layerName: 'layer_Gombo_2',
+            pane: 'pane_Gombo_2',
+            onEachFeature: pop_Gombo_2,
+            style: style_Gombo_2_0,
+        });
+        bounds_group.addLayer(layer_Gombo_2);
+        map.addLayer(layer_Gombo_2);
+        function pop_Mas_3(feature, layer) {
+            var popupContent = '<table>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['fid'] !== null ? autolinker.link(String(feature.properties['fid']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['DN'] !== null ? autolinker.link(String(feature.properties['DN']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['AREA'] !== null ? autolinker.link(String(feature.properties['AREA']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                </table>';
+            var content = removeEmptyRowsFromPopupContent(popupContent, feature);
+			layer.on('popupopen', function(e) {
+				addClassToPopupIfMedia(content, e.popup);
+			});
+			layer.bindPopup(content, { maxHeight: 400 });
+        }
+
+        function style_Mas_3_0(feature) {
+            switch(String(feature.properties['DN'])) {
+                case '1':
+                    return {
+                pane: 'pane_Mas_3',
+                stroke: false, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(255,122,99,0.8)',
+                interactive: true,
+            }
+                    break;
+                case '2':
+                    return {
+                pane: 'pane_Mas_3',
+                stroke: false, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(238,255,134,0.8)',
+                interactive: true,
+            }
+                    break;
+                case '3':
+                    return {
+                pane: 'pane_Mas_3',
+                stroke: false, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(98,176,95,0.8)',
+                interactive: true,
+            }
+                    break;
+            }
+        }
+        map.createPane('pane_Mas_3');
+        map.getPane('pane_Mas_3').style.zIndex = 403;
+        map.getPane('pane_Mas_3').style['mix-blend-mode'] = 'normal';
+        var layer_Mas_3 = new L.geoJson(json_Mas_3, {
+            attribution: '',
+            interactive: true,
+            dataVar: 'json_Mas_3',
+            layerName: 'layer_Mas_3',
+            pane: 'pane_Mas_3',
+            onEachFeature: pop_Mas_3,
+            style: style_Mas_3_0,
+        });
+        bounds_group.addLayer(layer_Mas_3);
+        map.addLayer(layer_Mas_3);
+        function pop_Piments_4(feature, layer) {
+            var popupContent = '<table>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['fid'] !== null ? autolinker.link(String(feature.properties['fid']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['DN'] !== null ? autolinker.link(String(feature.properties['DN']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['AREA'] !== null ? autolinker.link(String(feature.properties['AREA']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                </table>';
+            var content = removeEmptyRowsFromPopupContent(popupContent, feature);
+			layer.on('popupopen', function(e) {
+				addClassToPopupIfMedia(content, e.popup);
+			});
+			layer.bindPopup(content, { maxHeight: 400 });
+        }
+
+        function style_Piments_4_0(feature) {
+            switch(String(feature.properties['DN'])) {
+                case '1':
+                    return {
+                pane: 'pane_Piments_4',
+                stroke: false, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(255,122,99,0.8)',
+                interactive: true,
+            }
+                    break;
+                case '2':
+                    return {
+                pane: 'pane_Piments_4',
+                stroke: false, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(238,255,134,0.8)',
+                interactive: true,
+            }
+                    break;
+                case '3':
+                    return {
+                pane: 'pane_Piments_4',
+                stroke: false, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(98,176,95,0.8)',
+                interactive: true,
+            }
+                    break;
+            }
+        }
+        map.createPane('pane_Piments_4');
+        map.getPane('pane_Piments_4').style.zIndex = 404;
+        map.getPane('pane_Piments_4').style['mix-blend-mode'] = 'normal';
+        var layer_Piments_4 = new L.geoJson(json_Piments_4, {
+            attribution: '',
+            interactive: true,
+            dataVar: 'json_Piments_4',
+            layerName: 'layer_Piments_4',
+            pane: 'pane_Piments_4',
+            onEachFeature: pop_Piments_4,
+            style: style_Piments_4_0,
+        });
+        bounds_group.addLayer(layer_Piments_4);
+        map.addLayer(layer_Piments_4);
+        function pop_Sorgho_5(feature, layer) {
+            var popupContent = '<table>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['fid'] !== null ? autolinker.link(String(feature.properties['fid']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['DN'] !== null ? autolinker.link(String(feature.properties['DN']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['AREA'] !== null ? autolinker.link(String(feature.properties['AREA']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                </table>';
+            var content = removeEmptyRowsFromPopupContent(popupContent, feature);
+			layer.on('popupopen', function(e) {
+				addClassToPopupIfMedia(content, e.popup);
+			});
+			layer.bindPopup(content, { maxHeight: 400 });
+        }
+
+        function style_Sorgho_5_0(feature) {
+            switch(String(feature.properties['DN'])) {
+                case '1':
+                    return {
+                pane: 'pane_Sorgho_5',
+                stroke: false, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(255,122,99,0.8)',
+                interactive: true,
+            }
+                    break;
+                case '2':
+                    return {
+                pane: 'pane_Sorgho_5',
+                stroke: false, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(238,255,134,0.8)',
+                interactive: true,
+            }
+                    break;
+                case '3':
+                    return {
+                pane: 'pane_Sorgho_5',
+                stroke: false, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(98,176,95,0.8)',
+                interactive: true,
+            }
+                    break;
+            }
+        }
+        map.createPane('pane_Sorgho_5');
+        map.getPane('pane_Sorgho_5').style.zIndex = 405;
+        map.getPane('pane_Sorgho_5').style['mix-blend-mode'] = 'normal';
+        var layer_Sorgho_5 = new L.geoJson(json_Sorgho_5, {
+            attribution: '',
+            interactive: true,
+            dataVar: 'json_Sorgho_5',
+            layerName: 'layer_Sorgho_5',
+            pane: 'pane_Sorgho_5',
+            onEachFeature: pop_Sorgho_5,
+            style: style_Sorgho_5_0,
+        });
+        bounds_group.addLayer(layer_Sorgho_5);
+        map.addLayer(layer_Sorgho_5);
+        function pop_NDMI_6(feature, layer) {
+            var popupContent = '<table>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['fid'] !== null ? autolinker.link(String(feature.properties['fid']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['DN'] !== null ? autolinker.link(String(feature.properties['DN']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['CLASSE'] !== null ? autolinker.link(String(feature.properties['CLASSE']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['VALEUR'] !== null ? autolinker.link(String(feature.properties['VALEUR']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['Interpretation'] !== null ? autolinker.link(String(feature.properties['Interpretation']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['AREA'] !== null ? autolinker.link(String(feature.properties['AREA']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                </table>';
+            var content = removeEmptyRowsFromPopupContent(popupContent, feature);
+			layer.on('popupopen', function(e) {
+				addClassToPopupIfMedia(content, e.popup);
+			});
+			layer.bindPopup(content, { maxHeight: 400 });
+        }
+
+        function style_NDMI_6_0(feature) {
+            switch(String(feature.properties['VALEUR'])) {
+                case '< -0.1':
+                    return {
+                pane: 'pane_NDMI_6',
+                opacity: 1,
+                color: 'rgba(35,35,35,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1.0, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(115,178,216,1.0)',
+                interactive: true,
+            }
+                    break;
+                case '-0.1 à 0.1':
+                    return {
+                pane: 'pane_NDMI_6',
+                opacity: 1,
+                color: 'rgba(35,35,35,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1.0, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(8,48,107,1.0)',
+                interactive: true,
+            }
+                    break;
+            }
+        }
+        map.createPane('pane_NDMI_6');
+        map.getPane('pane_NDMI_6').style.zIndex = 406;
+        map.getPane('pane_NDMI_6').style['mix-blend-mode'] = 'normal';
+        var layer_NDMI_6 = new L.geoJson(json_NDMI_6, {
+            attribution: '',
+            interactive: true,
+            dataVar: 'json_NDMI_6',
+            layerName: 'layer_NDMI_6',
+            pane: 'pane_NDMI_6',
+            onEachFeature: pop_NDMI_6,
+            style: style_NDMI_6_0,
+        });
+        bounds_group.addLayer(layer_NDMI_6);
+        map.addLayer(layer_NDMI_6);
+        function pop_NDVI_7(feature, layer) {
+            var popupContent = '<table>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['fid'] !== null ? autolinker.link(String(feature.properties['fid']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['VALEUR'] !== null ? autolinker.link(String(feature.properties['VALEUR']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['interpretation'] !== null ? autolinker.link(String(feature.properties['interpretation']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['Classe'] !== null ? autolinker.link(String(feature.properties['Classe']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['AREA'] !== null ? autolinker.link(String(feature.properties['AREA']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                </table>';
+            var content = removeEmptyRowsFromPopupContent(popupContent, feature);
+			layer.on('popupopen', function(e) {
+				addClassToPopupIfMedia(content, e.popup);
+			});
+			layer.bindPopup(content, { maxHeight: 400 });
+        }
+
+        function style_NDVI_7_0(feature) {
+            switch(String(feature.properties['VALEUR'])) {
+                case '0.199 à 0.35':
+                    return {
+                pane: 'pane_NDVI_7',
+                opacity: 1,
+                color: 'rgba(83,83,83,0.8)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(255,180,74,0.8)',
+                interactive: true,
+            }
+                    break;
+                case '0.35 à 0.50':
+                    return {
+                pane: 'pane_NDVI_7',
+                opacity: 1,
+                color: 'rgba(83,83,83,0.8)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(238,255,134,0.8)',
+                interactive: true,
+            }
+                    break;
+                case '0.50 à 0.658':
+                    return {
+                pane: 'pane_NDVI_7',
+                opacity: 1,
+                color: 'rgba(83,83,83,0.8)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(36,169,31,0.8)',
+                interactive: true,
+            }
+                    break;
+            }
+        }
+        map.createPane('pane_NDVI_7');
+        map.getPane('pane_NDVI_7').style.zIndex = 407;
+        map.getPane('pane_NDVI_7').style['mix-blend-mode'] = 'normal';
+        var layer_NDVI_7 = new L.geoJson(json_NDVI_7, {
+            attribution: '',
+            interactive: true,
+            dataVar: 'json_NDVI_7',
+            layerName: 'layer_NDVI_7',
+            pane: 'pane_NDVI_7',
+            onEachFeature: pop_NDVI_7,
+            style: style_NDVI_7_0,
+        });
+        bounds_group.addLayer(layer_NDVI_7);
+        map.addLayer(layer_NDVI_7);
+        function pop_Santdusol_8(feature, layer) {
+            var popupContent = '<table>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['fid'] !== null ? autolinker.link(String(feature.properties['fid']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['DN'] !== null ? autolinker.link(String(feature.properties['DN']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['AREA'] !== null ? autolinker.link(String(feature.properties['AREA']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['CLASSE'] !== null ? autolinker.link(String(feature.properties['CLASSE']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                </table>';
+            var content = removeEmptyRowsFromPopupContent(popupContent, feature);
+			layer.on('popupopen', function(e) {
+				addClassToPopupIfMedia(content, e.popup);
+			});
+			layer.bindPopup(content, { maxHeight: 400 });
+        }
+
+        function style_Santdusol_8_0(feature) {
+            switch(String(feature.properties['DN'])) {
+                case '0':
+                    return {
+                pane: 'pane_Santdusol_8',
+                opacity: 1,
+                color: 'rgba(62,197,0,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1.0, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(177,248,156,0.30196078431372547)',
+                interactive: true,
+            }
+                    break;
+                case '1':
+                    return {
+                pane: 'pane_Santdusol_8',
+                opacity: 1,
+                color: 'rgba(215,62,36,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1.0, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(215,62,36,1.0)',
+                interactive: true,
+            }
+                    break;
+            }
+        }
+        map.createPane('pane_Santdusol_8');
+        map.getPane('pane_Santdusol_8').style.zIndex = 408;
+        map.getPane('pane_Santdusol_8').style['mix-blend-mode'] = 'normal';
+        var layer_Santdusol_8 = new L.geoJson(json_Santdusol_8, {
+            attribution: '',
+            interactive: true,
+            dataVar: 'json_Santdusol_8',
+            layerName: 'layer_Santdusol_8',
+            pane: 'pane_Santdusol_8',
+            onEachFeature: pop_Santdusol_8,
+            style: style_Santdusol_8_0,
+        });
+        bounds_group.addLayer(layer_Santdusol_8);
+        map.addLayer(layer_Santdusol_8);
+        function pop_Penteendegrs_9(feature, layer) {
+            var popupContent = '<table>\
+                    <tr>\
+                        <td colspan="2"><strong>fid</strong><br />' + (feature.properties['fid'] !== null ? autolinker.link(String(feature.properties['fid']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['VALEUR'] !== null ? autolinker.link(String(feature.properties['VALEUR']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['CLASSE'] !== null ? autolinker.link(String(feature.properties['CLASSE']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['Interpretation'] !== null ? autolinker.link(String(feature.properties['Interpretation']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['AREA'] !== null ? autolinker.link(String(feature.properties['AREA']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                </table>';
+            var content = removeEmptyRowsFromPopupContent(popupContent, feature);
+			layer.on('popupopen', function(e) {
+				addClassToPopupIfMedia(content, e.popup);
+			});
+			layer.bindPopup(content, { maxHeight: 400 });
+        }
+
+        function style_Penteendegrs_9_0(feature) {
+            switch(String(feature.properties['VALEUR'])) {
+                case '0 à 2':
+                    return {
+                pane: 'pane_Penteendegrs_9',
+                opacity: 1,
+                color: 'rgba(35,35,35,0.8)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(26,150,65,0.8)',
+                interactive: true,
+            }
+                    break;
+                case '2 à 4':
+                    return {
+                pane: 'pane_Penteendegrs_9',
+                opacity: 1,
+                color: 'rgba(35,35,35,0.8)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(255,255,192,0.8)',
+                interactive: true,
+            }
+                    break;
+                case '4 à 6.7':
+                    return {
+                pane: 'pane_Penteendegrs_9',
+                opacity: 1,
+                color: 'rgba(35,35,35,0.8)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(215,25,28,0.8)',
+                interactive: true,
+            }
+                    break;
+            }
+        }
+        map.createPane('pane_Penteendegrs_9');
+        map.getPane('pane_Penteendegrs_9').style.zIndex = 409;
+        map.getPane('pane_Penteendegrs_9').style['mix-blend-mode'] = 'normal';
+        var layer_Penteendegrs_9 = new L.geoJson(json_Penteendegrs_9, {
+            attribution: '',
+            interactive: true,
+            dataVar: 'json_Penteendegrs_9',
+            layerName: 'layer_Penteendegrs_9',
+            pane: 'pane_Penteendegrs_9',
+            onEachFeature: pop_Penteendegrs_9,
+            style: style_Penteendegrs_9_0,
+        });
+        bounds_group.addLayer(layer_Penteendegrs_9);
+        map.addLayer(layer_Penteendegrs_9);
+        function pop_LimiteParcelle_10(feature, layer) {
+            var popupContent = '<table>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['fid'] !== null ? autolinker.link(String(feature.properties['fid']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['AREA'] !== null ? autolinker.link(String(feature.properties['AREA']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                </table>';
+            var content = removeEmptyRowsFromPopupContent(popupContent, feature);
+			layer.on('popupopen', function(e) {
+				addClassToPopupIfMedia(content, e.popup);
+			});
+			layer.bindPopup(content, { maxHeight: 400 });
+        }
+
+        function style_LimiteParcelle_10_0() {
+            return {
+                pane: 'pane_LimiteParcelle_10',
+                opacity: 1,
+                color: 'rgba(228,26,28,1.0)',
+                dashArray: '',
+                lineCap: 'square',
+                lineJoin: 'bevel',
+                weight: 4.0,
+                fillOpacity: 0,
+                interactive: true,
+            }
+        }
+        map.createPane('pane_LimiteParcelle_10');
+        map.getPane('pane_LimiteParcelle_10').style.zIndex = 410;
+        map.getPane('pane_LimiteParcelle_10').style['mix-blend-mode'] = 'normal';
+        var layer_LimiteParcelle_10 = new L.geoJson(json_LimiteParcelle_10, {
+            attribution: '',
+            interactive: true,
+            dataVar: 'json_LimiteParcelle_10',
+            layerName: 'layer_LimiteParcelle_10',
+            pane: 'pane_LimiteParcelle_10',
+            onEachFeature: pop_LimiteParcelle_10,
+            style: style_LimiteParcelle_10_0,
+        });
+        bounds_group.addLayer(layer_LimiteParcelle_10);
+        map.addLayer(layer_LimiteParcelle_10);
+        function pop_Coordonnesdelaparcelle_11(feature, layer) {
+            var popupContent = '<table>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['fid'] !== null ? autolinker.link(String(feature.properties['fid']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['AREA'] !== null ? autolinker.link(String(feature.properties['AREA']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['X'] !== null ? autolinker.link(String(feature.properties['X']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['Y'] !== null ? autolinker.link(String(feature.properties['Y']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                </table>';
+            var content = removeEmptyRowsFromPopupContent(popupContent, feature);
+			layer.on('popupopen', function(e) {
+				addClassToPopupIfMedia(content, e.popup);
+			});
+			layer.bindPopup(content, { maxHeight: 400 });
+        }
+
+        function style_Coordonnesdelaparcelle_11_0() {
+            return {
+                pane: 'pane_Coordonnesdelaparcelle_11',
+                radius: 8.0,
+                opacity: 1,
+                color: 'rgba(255,0,0,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 2.0,
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(255,255,255,1.0)',
+                interactive: true,
+            }
+        }
+        map.createPane('pane_Coordonnesdelaparcelle_11');
+        map.getPane('pane_Coordonnesdelaparcelle_11').style.zIndex = 411;
+        map.getPane('pane_Coordonnesdelaparcelle_11').style['mix-blend-mode'] = 'normal';
+        var layer_Coordonnesdelaparcelle_11 = new L.geoJson(json_Coordonnesdelaparcelle_11, {
+            attribution: '',
+            interactive: true,
+            dataVar: 'json_Coordonnesdelaparcelle_11',
+            layerName: 'layer_Coordonnesdelaparcelle_11',
+            pane: 'pane_Coordonnesdelaparcelle_11',
+            onEachFeature: pop_Coordonnesdelaparcelle_11,
+            pointToLayer: function (feature, latlng) {
+                var context = {
+                    feature: feature,
+                    variables: {}
+                };
+                return L.circleMarker(latlng, style_Coordonnesdelaparcelle_11_0(feature));
+            },
+        });
+        bounds_group.addLayer(layer_Coordonnesdelaparcelle_11);
+        map.addLayer(layer_Coordonnesdelaparcelle_11);
+        var overlaysTree = [
+            {label: '<img src="legend/Coordonnesdelaparcelle_11.png" /> Coordonnées de la parcelle', layer: layer_Coordonnesdelaparcelle_11},
+            {label: '<img src="legend/LimiteParcelle_10.png" /> Limite Parcelle', layer: layer_LimiteParcelle_10},
+            {label: 'Pente en degrés<br /><table><tr><td style="text-align: center;"><img src="legend/Penteendegrs_9_0à2Parfaitementplatinfiltrationmaximalerisquedérosionnul0.png" /></td><td>0 à 2 (Parfaitement plat, infiltration maximale, risque d’érosion nul)</td></tr><tr><td style="text-align: center;"><img src="legend/Penteendegrs_9_2à4LégèrepenteécoulementpossiblemaisfaiblerisqueLégèrepenteécoulementpossiblemaisfaiblerisquedérosion1.png" /></td><td>2 à 4 (Légère pente, écoulement possible mais faible risqueLégère pente, écoulement possible mais faible risque d\'érosion)</td></tr><tr><td style="text-align: center;"><img src="legend/Penteendegrs_9_4à67Pentenotableruissellementplusrapiderisquedérosionlocalisé2.png" /></td><td>4 à 6.7 (Pente notable, ruissellement plus rapide, risque d’érosion localisé)</td></tr></table>', layer: layer_Penteendegrs_9},
+            {label: 'Santé du sol<br /><table><tr><td style="text-align: center;"><img src="legend/Santdusol_8_Horszonedalerte0.png" /></td><td>Hors zone d\'alerte</td></tr><tr><td style="text-align: center;"><img src="legend/Santdusol_8_Zoneàsurveillersolpotentiellementdégradé1.png" /></td><td>Zone à surveiller (sol potentiellement dégradé)</td></tr></table>', layer: layer_Santdusol_8},
+        {label: '<b>Indices</b>',  selectAllCheckbox: true, children: [
+            {label: 'NDVI<br /><table><tr><td style="text-align: center;"><img src="legend/NDVI_7_0199à035Végétationclairsemée0.png" /></td><td>0.199 à 0.35  (Végétation clairsemée)</td></tr><tr><td style="text-align: center;"><img src="legend/NDVI_7_035à050Végétationmoyenne1.png" /></td><td>0.35 à 0.50  (Végétation moyenne)</td></tr><tr><td style="text-align: center;"><img src="legend/NDVI_7_050à0658Végétationdensejachèrebiendéveloppée2.png" /></td><td>0.50 à 0.658  (Végétation dense (jachère bien développée))</td></tr></table>', layer: layer_NDVI_7},
+            {label: 'NDMI<br /><table><tr><td style="text-align: center;"><img src="legend/NDMI_6_01Secstresshydrique0.png" /></td><td>< -0.1 (Sec (stress hydrique))</td></tr><tr><td style="text-align: center;"><img src="legend/NDMI_6_01à01Humiditémodérée1.png" /></td><td>-0.1 à 0.1 (Humidité modérée)</td></tr></table>', layer: layer_NDMI_6},]},
+        {label: '<b>Favorabilité</b>',  selectAllCheckbox: true, children: [
+            {label: 'Sorgho<br /><table><tr><td style="text-align: center;"><img src="legend/Sorgho_5_1Peufavorable0.png" /></td><td>1- Peu favorable</td></tr><tr><td style="text-align: center;"><img src="legend/Sorgho_5_2Moyennementfavorable1.png" /></td><td>2- Moyennement favorable</td></tr><tr><td style="text-align: center;"><img src="legend/Sorgho_5_3Trèsfavorable2.png" /></td><td>3- Très favorable</td></tr></table>', layer: layer_Sorgho_5},
+            {label: 'Piments<br /><table><tr><td style="text-align: center;"><img src="legend/Piments_4_1Peufavorable0.png" /></td><td>1- Peu favorable</td></tr><tr><td style="text-align: center;"><img src="legend/Piments_4_2Moyennementfavorable1.png" /></td><td>2- Moyennement favorable</td></tr><tr><td style="text-align: center;"><img src="legend/Piments_4_3Trèsfavorable2.png" /></td><td>3- Très favorable</td></tr></table>', layer: layer_Piments_4},
+            {label: 'Maïs<br /><table><tr><td style="text-align: center;"><img src="legend/Mas_3_1Peufavorable0.png" /></td><td>1- Peu favorable</td></tr><tr><td style="text-align: center;"><img src="legend/Mas_3_2Moyennementfavorable1.png" /></td><td>2- Moyennement favorable</td></tr><tr><td style="text-align: center;"><img src="legend/Mas_3_3Trèsfavorable2.png" /></td><td>3- Très favorable</td></tr></table>', layer: layer_Mas_3},
+            {label: 'Gombo<br /><table><tr><td style="text-align: center;"><img src="legend/Gombo_2_1Peufavorable0.png" /></td><td>1- Peu favorable</td></tr><tr><td style="text-align: center;"><img src="legend/Gombo_2_2Moyennementfavorable1.png" /></td><td>2- Moyennement favorable</td></tr><tr><td style="text-align: center;"><img src="legend/Gombo_2_3Trèsfavorable2.png" /></td><td>3- Très favorable</td></tr></table>', layer: layer_Gombo_2},
+            {label: 'Arachide<br /><table><tr><td style="text-align: center;"><img src="legend/Arachide_1_1Peufavorable0.png" /></td><td>1- Peu favorable</td></tr><tr><td style="text-align: center;"><img src="legend/Arachide_1_2Moyennementfavorable1.png" /></td><td>2- Moyennement favorable</td></tr><tr><td style="text-align: center;"><img src="legend/Arachide_1_3Trèsfavorable2.png" /></td><td>3- Très favorable</td></tr></table>', layer: layer_Arachide_1},]},
+            {label: "Basemap: Google Satellite", layer: layer_BasemapGoogleSatellite_0},]
+        var lay = L.control.layers.tree(null, overlaysTree,{
+            //namedToggle: true,
+            //selectorBack: false,
+            //closedSymbol: '&#8862; &#x1f5c0;',
+            //openedSymbol: '&#8863; &#x1f5c1;',
+            //collapseAll: 'Collapse all',
+            //expandAll: 'Expand all',
+            collapsed: false, 
+        });
+        lay.addTo(map);
+		document.addEventListener("DOMContentLoaded", function() {
+            // set new Layers List height which considers toggle icon
+            function newLayersListHeight() {
+                var layerScrollbarElement = document.querySelector('.leaflet-control-layers-scrollbar');
+                if (layerScrollbarElement) {
+                    var layersListElement = document.querySelector('.leaflet-control-layers-list');
+                    var originalHeight = layersListElement.style.height 
+                        || window.getComputedStyle(layersListElement).height;
+                    var newHeight = parseFloat(originalHeight) - 50;
+                    layersListElement.style.height = newHeight + 'px';
+                }
+            }
+            var isLayersListExpanded = true;
+            var controlLayersElement = document.querySelector('.leaflet-control-layers');
+            var toggleLayerControl = document.querySelector('.leaflet-control-layers-toggle');
+            // toggle Collapsed/Expanded and apply new Layers List height
+            toggleLayerControl.addEventListener('click', function() {
+                if (isLayersListExpanded) {
+                    controlLayersElement.classList.remove('leaflet-control-layers-expanded');
+                } else {
+                    controlLayersElement.classList.add('leaflet-control-layers-expanded');
+                }
+                isLayersListExpanded = !isLayersListExpanded;
+                newLayersListHeight()
+            });	
+			// apply new Layers List height if toggle layerstree
+			if (controlLayersElement) {
+				controlLayersElement.addEventListener('click', function(event) {
+					var toggleLayerHeaderPointer = event.target.closest('.leaflet-layerstree-header-pointer span');
+					if (toggleLayerHeaderPointer) {
+						newLayersListHeight();
+					}
+				});
+			}
+            // Collapsed/Expanded at Start to apply new height
+            setTimeout(function() {
+                toggleLayerControl.click();
+            }, 10);
+            setTimeout(function() {
+                toggleLayerControl.click();
+            }, 10);
+            // Collapsed touch/small screen
+            var isSmallScreen = window.innerWidth < 650;
+            if (isSmallScreen) {
+                setTimeout(function() {
+                    controlLayersElement.classList.remove('leaflet-control-layers-expanded');
+                    isLayersListExpanded = !isLayersListExpanded;
+                }, 500);
+            }  
+        });       
+        setBounds();
+        var i = 0;
+        layer_Coordonnesdelaparcelle_11.eachLayer(function(layer) {
+            var context = {
+                feature: layer.feature,
+                variables: {}
+            };
+            layer.bindTooltip((exp_label_Coordonnesdelaparcelle_11_eval_expression(context) !== null?String('<div style="color: #323232; font-size: 10pt; font-weight: bold; font-family: \'Arial\', sans-serif;">' + exp_label_Coordonnesdelaparcelle_11_eval_expression(context)) + '</div>':''), {permanent: true, offset: [-0, -16], className: 'css_Coordonnesdelaparcelle_11'});
+            labels.push(layer);
+            totalMarkers += 1;
+              layer.added = true;
+              addLabel(layer, i);
+              i++;
+        });
+        resetLabels([layer_Coordonnesdelaparcelle_11]);
+        map.on("zoomend", function(){
+            resetLabels([layer_Coordonnesdelaparcelle_11]);
+        });
+        map.on("layeradd", function(){
+            resetLabels([layer_Coordonnesdelaparcelle_11]);
+        });
+        map.on("layerremove", function(){
+            resetLabels([layer_Coordonnesdelaparcelle_11]);
+        });
+        </script>        
+    </body>
+</html>
