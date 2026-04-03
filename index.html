@@ -41,14 +41,18 @@
     }
 
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    html { scroll-behavior: smooth; }
+    html, body {
+      height: auto;
+      min-height: 100vh;
+      overflow-y: auto !important;
+      overflow-x: hidden;
+      scroll-behavior: smooth;
+    }
     body {
       font-family: 'DM Sans', sans-serif;
       background: var(--cream);
       color: var(--text);
       line-height: 1.55;
-      min-height: 100vh;
-      overflow-x: hidden;
     }
 
     /* ========== CONNEXION ========== */
@@ -796,7 +800,7 @@
 <script src="qgis2web_export/data/Coordonnesdelaparcelle_11.js"></script>
 
 <script>
-/* ===== FERMETURE AUTO DU DRAWER & NAVIGATION ===== */
+/* ===== FERMETURE AUTO DU DRAWER & SCROLL ===== */
 const burgerBtn = document.getElementById('burgerBtn');
 const navDrawer = document.getElementById('navDrawer');
 const navBackdrop = document.getElementById('navBackdrop');
@@ -829,18 +833,20 @@ function switchTab(tabId) {
   if (tabId === 'carte' && typeof map !== 'undefined') {
     setTimeout(() => map.invalidateSize(), 100);
   }
-  closeDrawer();  // fermeture automatique du drawer après clic sur un onglet (mobile)
+  closeDrawer();
 }
 
-// Attacher les événements à TOUS les onglets (desktop + drawer)
 document.querySelectorAll('.tab-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     switchTab(btn.getAttribute('data-tab'));
   });
 });
 
-/* ===== CARTE LEAFLET (centrée sur la parcelle) ===== */
+/* ===== CARTE LEAFLET ===== */
 var map = L.map('map', { zoomControl: false, maxZoom: 28, minZoom: 4 }).setView([7.382, 1.126], 16);
+// Désactiver le zoom molette pour éviter les conflits de scroll (optionnel)
+map.scrollWheelZoom.disable();
+
 var hash = new L.Hash(map);
 map.attributionControl.setPrefix('<a href="https://github.com/tomchadwin/qgis2web">qgis2web</a> · Leaflet');
 var autolinker = new Autolinker({ truncate: { length: 30, location: 'smart' } });
@@ -878,10 +884,9 @@ var layer_BasemapGoogleSatellite_0 = L.tileLayer('https://mt1.google.com/vt/lyrs
 }).addTo(map);
 
 function makePopup(props, keys) {
-  return keys.map(k => props[k] != null ? '<table><td colspan="2">' + autolinker.link(String(props[k])) + '</td></tr>' : '').join('');
+  return keys.map(k => props[k] != null ? '<tr><td colspan="2">' + autolinker.link(String(props[k])) + '</td></tr>' : '').join('');
 }
 
-// Helpers pour créer les couches
 function mkLayer(jsonVar, paneName, zIdx, popKeys, styleFn, isPoint) {
   var popFn = function(f,l) {
     var c = makePopup(f.properties, popKeys);
@@ -899,7 +904,6 @@ function mkLayer(jsonVar, paneName, zIdx, popKeys, styleFn, isPoint) {
   return layer;
 }
 
-// Création des couches
 var layer_Arachide_1 = mkLayer(json_Arachide_1, 'pane_Arachide_1', 401, ['fid','DN','AREA'],
   f => ({pane:'pane_Arachide_1',stroke:false,fill:true,fillOpacity:1,interactive:true,fillColor:({1:'rgba(255,122,99,0.8)',2:'rgba(238,255,134,0.8)',3:'rgba(98,176,95,0.8)'}[f.properties['DN']]||'transparent')}));
 var layer_Gombo_2 = mkLayer(json_Gombo_2, 'pane_Gombo_2', 402, ['fid','DN','AREA'],
