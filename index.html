@@ -2,10 +2,10 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, viewport-fit=cover">
   <title>SmartAgroMap – Diagnostic Marcel Bossou</title>
 
-  <!-- Ressources QGIS2WEB -->
+  <!-- Ressources QGIS2WEB (Leaflet) – ces fichiers DOIVENT être dans le dossier qgis2web_export -->
   <link rel="stylesheet" href="qgis2web_export/css/leaflet.css" />
   <link rel="stylesheet" href="qgis2web_export/css/L.Control.Layers.Tree.css" />
   <link rel="stylesheet" href="qgis2web_export/css/L.Control.Locate.min.css" />
@@ -18,6 +18,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
   <style>
+    /* ========== RESET & SCROLL ========== */
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html { scroll-behavior: smooth; height: auto; min-height: 100vh; overflow-y: auto; }
     body {
@@ -30,7 +31,7 @@
       overflow-y: auto;
     }
 
-    /* Connexion */
+    /* ========== CONNEXION ========== */
     .login-overlay {
       position: fixed;
       top: 0;
@@ -61,7 +62,7 @@
     .error-msg { color: #c0392b; font-size: 0.8rem; margin-top: 0.5rem; }
     .hidden { display: none !important; }
 
-    /* Navigation avec menu hamburger */
+    /* ========== NAVIGATION (hamburger) ========== */
     .nav-bar {
       background: #1f3a1f;
       color: white;
@@ -108,7 +109,6 @@
     .tab-btn.active { background: #2d5a27; color: white; box-shadow: 0 2px 6px rgba(0,0,0,0.2); }
     .tab-btn:hover:not(.active) { background: rgba(255,255,255,0.15); color: white; }
 
-    /* Version mobile : menu hamburger */
     @media (max-width: 768px) {
       .burger { display: block; }
       .nav-tabs {
@@ -147,7 +147,7 @@
       .overlay.open { display: block; }
     }
 
-    /* Hero */
+    /* ========== HERO ========== */
     .hero {
       background: linear-gradient(135deg, #1f3a1f, #2d5a27);
       color: white;
@@ -165,7 +165,7 @@
     }
     .hero-meta span { background: rgba(255,255,255,0.15); padding: 0.3rem 0.8rem; border-radius: 40px; font-size: 0.75rem; }
 
-    /* Conteneur */
+    /* ========== CONTENEUR ========== */
     .main-container {
       max-width: 1200px;
       margin: 0 auto;
@@ -175,7 +175,7 @@
     .tab-content.active-tab { display: block; }
     @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
 
-    /* Fiche parcelle */
+    /* ========== CARTES & KPI ========== */
     .parcelle-card {
       background: white;
       border-radius: 24px;
@@ -193,10 +193,9 @@
     }
     .parcelle-item { background: #fefef9; padding: 0.6rem; border-radius: 14px; font-size: 0.85rem; }
 
-    /* KPI */
     .kpi-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
       gap: 0.8rem;
       margin-bottom: 1.5rem;
     }
@@ -210,7 +209,6 @@
     .kpi-value { font-size: 1.4rem; font-weight: 800; color: #2d5a27; }
     .kpi-label { font-size: 0.7rem; text-transform: uppercase; }
 
-    /* Cartes génériques */
     .card-modern {
       background: white;
       border-radius: 24px;
@@ -240,7 +238,6 @@
       flex-direction: column;
       gap: 0.5rem;
     }
-    .soil-info-icon { font-size: 1.8rem; text-align: center; }
     .soil-stats {
       display: flex;
       flex-wrap: wrap;
@@ -289,6 +286,32 @@
       margin-top: 0.5rem;
     }
     #map { height: 100%; width: 100%; }
+
+    /* Contrôles mobiles */
+    @media (max-width: 768px) {
+      .leaflet-control-layers-tree {
+        bottom: 20px;
+        top: auto !important;
+        right: 10px !important;
+        left: auto !important;
+        max-height: 50vh;
+        width: 260px !important;
+      }
+      .leaflet-control-layers-toggle {
+        width: 40px !important;
+        height: 40px !important;
+        background-size: 24px 24px !important;
+      }
+      .leaflet-control-zoom a,
+      .leaflet-control-locate a,
+      .leaflet-control-measure-toggle {
+        width: 40px !important;
+        height: 40px !important;
+        line-height: 40px !important;
+        font-size: 22px !important;
+      }
+    }
+
     .service-card {
       background: linear-gradient(135deg, #eef5ea, #ffffff);
       border-radius: 24px;
@@ -314,14 +337,13 @@
     }
     @media (max-width: 480px) {
       .hero h1 { font-size: 1.3rem; }
-      .kpi-value { font-size: 1.2rem; }
       .map-wrapper { height: 320px; }
     }
   </style>
 </head>
 <body>
 
-<!-- Connexion -->
+<!-- CONNEXION -->
 <div id="loginOverlay" class="login-overlay">
   <div class="login-card">
     <h3>🌾 SmartAgroMap</h3>
@@ -344,6 +366,7 @@
   document.getElementById('passwordInput').addEventListener('keypress', e => { if(e.key === 'Enter') checkPassword(); });
 </script>
 
+<!-- NAVIGATION -->
 <nav class="nav-bar">
   <div class="nav-logo">🌿 SmartAgroMap · Atakpamé</div>
   <button class="burger" id="burgerBtn">☰</button>
@@ -357,6 +380,7 @@
 </nav>
 <div id="overlay" class="overlay"></div>
 
+<!-- HERO -->
 <div class="hero">
   <h1>Diagnostic agronomique<br>Terrain Marcel Bossou</h1>
   <p>Analyse géospatiale des sols, de l'eau et de la végétation — Atakpamé, Togo</p>
@@ -368,8 +392,9 @@
 </div>
 
 <main class="main-container">
-  <!-- Onglet Carte -->
+  <!-- ========== ONGLET CARTE (avec les 5 cultures) ========== -->
   <div id="carte-tab" class="tab-content active-tab">
+    <!-- Fiche parcelle -->
     <div class="parcelle-card">
       <h3>📍 Parcelle de Monsieur Marcel Bossou</h3>
       <p>Atakpamé, Togo — 7.382°N, 1.126°E</p>
@@ -380,16 +405,31 @@
         <div class="parcelle-item"><strong>Contraintes</strong><br>Stress hydrique, sols sableux</div>
       </div>
     </div>
+
+    <!-- Bloc des 5 cultures -->
+    <div class="card-modern">
+      <h3 class="section-title">🌾 Cultures recommandées (favorabilité)</h3>
+      <div class="grid-2cols" style="grid-template-columns: repeat(auto-fit, minmax(140px,1fr));">
+        <div class="kpi-card"><div class="kpi-value">96%</div><div class="kpi-label">Arachide</div></div>
+        <div class="kpi-card"><div class="kpi-value">90%</div><div class="kpi-label">Maïs</div></div>
+        <div class="kpi-card"><div class="kpi-value">87%</div><div class="kpi-label">Sorgho</div></div>
+        <div class="kpi-card"><div class="kpi-value">87%</div><div class="kpi-label">Piment</div></div>
+        <div class="kpi-card"><div class="kpi-value">87%</div><div class="kpi-label">Gombo</div></div>
+      </div>
+      <p style="font-size:0.75rem; margin-top:0.5rem;">*Pourcentage de surface très favorable à moyennement favorable.</p>
+    </div>
+
+    <!-- Carte -->
     <div class="card-modern" style="padding:0;">
       <div style="padding: 0.8rem 1rem 0;">
         <h2 class="section-title">🗺️ Carte interactive</h2>
-        <p style="font-size:0.8rem;">Contrôle des couches en haut à droite</p>
+        <p style="font-size:0.8rem;">Contrôle des couches en haut à droite (ou en bas sur mobile)</p>
       </div>
       <div class="map-wrapper"><div id="map"></div></div>
     </div>
   </div>
 
-  <!-- Onglet Indicateurs -->
+  <!-- ========== ONGLET INDICATEURS ========== -->
   <div id="indicateurs-tab" class="tab-content">
     <div class="kpi-grid">
       <div class="kpi-card"><div class="kpi-value">96%</div><div class="kpi-label">Arachide favorable</div></div>
@@ -405,7 +445,7 @@
     <div class="card-modern">
       <h3 class="section-title">🧱 Fertilité des sols</h3>
       <div class="soil-info">
-        <div class="soil-info-icon">🌾</div>
+        <div style="font-size:1.5rem;">🌾</div>
         <div><strong>Zones à fertilité faible (non améliorées)</strong><br>7,8 ha (35%) nécessitent compost et zaï.</div>
         <div class="soil-stats"><span class="soil-stat">✅ Sols fertiles : 14,4 ha</span><span class="soil-stat">⚠️ À améliorer : 7,8 ha</span></div>
       </div>
@@ -419,10 +459,10 @@
     </div>
   </div>
 
-  <!-- Onglet Recommandations -->
+  <!-- ========== ONGLET RECOMMANDATIONS ========== -->
   <div id="recommandations-tab" class="tab-content">
     <div class="card-modern">
-      <h2 class="section-title">🌿 Préconisations</h2>
+      <h2 class="section-title">🌿 Préconisations agronomiques</h2>
       <ul class="reco-list">
         <li><strong>Fertilité</strong> : fumier/compost (sol sableux).</li>
         <li><strong>Eau & érosion</strong> : cordons pierreux, vetiver.</li>
@@ -433,12 +473,12 @@
       </ul>
     </div>
     <div class="card-modern">
-      <h3 class="section-title">📅 Calendrier</h3>
+      <h3 class="section-title">📅 Calendrier indicatif</h3>
       <p>Fév-mars : préparation/fumure<br>Mars-avril : semis arachide<br>Juin-juillet : rotation céréales<br>Mai-sept : irrigation si NDMI négatif</p>
     </div>
   </div>
 
-  <!-- Onglet Suivi -->
+  <!-- ========== ONGLET SUIVI ========== -->
   <div id="suivi-tab" class="tab-content">
     <div class="service-card">
       <div style="font-size:2rem;">📡</div>
@@ -449,7 +489,7 @@
     </div>
   </div>
 
-  <!-- Onglet Rapport -->
+  <!-- ========== ONGLET RAPPORT ========== -->
   <div id="rapport-tab" class="tab-content">
     <div class="card-modern" style="text-align:center;">
       <h2 class="section-title" style="justify-content:center;">📄 Rapport final</h2>
@@ -463,7 +503,7 @@
   © SmartAgroMap – Marieme Lissa Keita – Données : Sentinel‑2, SRTM, SoilGrids, CHIRPS/ANAMET
 </footer>
 
-<!-- Scripts QGIS2WEB (inchangés) -->
+<!-- ========== SCRIPTS QGIS2WEB (intégrale) ========== -->
 <script src="qgis2web_export/js/qgis2web_expressions.js"></script>
 <script src="qgis2web_export/js/leaflet.js"></script>
 <script src="qgis2web_export/js/L.Control.Layers.Tree.min.js"></script>
@@ -515,9 +555,10 @@
     });
   });
 
-  // Initialisation de la carte (intégrale QGIS2WEB)
+  // ========== INITIALISATION DE LA CARTE ==========
+  // Centrage sur la parcelle Marcel Bossou (7.382, 1.126) avec zoom 16
   var map = L.map('map', { zoomControl: false, maxZoom: 28, minZoom: 4 })
-      .fitBounds([[7.373374269483139,1.1127854837112017],[7.386386251671033,1.1370231099988932]]);
+      .setView([7.382, 1.126], 16);
   var hash = new L.Hash(map);
   map.attributionControl.setPrefix('<a href="https://github.com/tomchadwin/qgis2web">qgis2web</a> · Leaflet');
   var autolinker = new Autolinker({ truncate: { length: 30, location: 'smart' } });
@@ -564,7 +605,7 @@
     return keys.map(k => props[k] != null ? '<tr><td colspan="2">' + autolinker.link(String(props[k])) + '</td></tr>' : '').join('');
   }
 
-  // Couches (copie intégrale de votre export)
+  // ========== DÉFINITION DES COUCHES (QGIS2WEB) ==========
   function pop_Arachide_1(f,l){ var c=makePopup(f.properties,['fid','DN','AREA']); c=removeEmptyRowsFromPopupContent(c,f); l.on('popupopen',function(e){addClassToPopupIfMedia(c,e.popup);}); l.bindPopup(c,{maxHeight:400}); }
   function style_Arachide_1_0(f){ switch(String(f.properties['DN'])){ case'1':return{pane:'pane_Arachide_1',stroke:false,fill:true,fillOpacity:1,fillColor:'rgba(255,122,99,0.8)',interactive:true}; case'2':return{pane:'pane_Arachide_1',stroke:false,fill:true,fillOpacity:1,fillColor:'rgba(238,255,134,0.8)',interactive:true}; case'3':return{pane:'pane_Arachide_1',stroke:false,fill:true,fillOpacity:1,fillColor:'rgba(98,176,95,0.8)',interactive:true}; default:return{}; } }
   map.createPane('pane_Arachide_1'); map.getPane('pane_Arachide_1').style.zIndex=401;
@@ -666,7 +707,7 @@
   map.on('layeradd', function() { resetLabels([layer_Coordonnesdelaparcelle_11]); });
   map.on('layerremove', function() { resetLabels([layer_Coordonnesdelaparcelle_11]); });
 
-  // Graphiques
+  // ========== GRAPHIQUES ==========
   new Chart(document.getElementById('ndviChart'), {
     type: 'pie',
     data: { labels: ['NDVI faible', 'NDVI moyen', 'NDVI bon'], datasets: [{ data: [35, 48, 17], backgroundColor: ['#ffb44a', '#eeff86', '#24a91f'], borderWidth: 0 }] },
