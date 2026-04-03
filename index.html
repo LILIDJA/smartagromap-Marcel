@@ -18,7 +18,6 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
   <style>
-    /* ========== STYLES (inchangés, identiques à la version finale précédente) ========== */
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html { scroll-behavior: smooth; height: auto; min-height: 100vh; overflow-y: auto; }
     body {
@@ -30,6 +29,8 @@
       min-height: 100vh;
       overflow-y: auto;
     }
+
+    /* Connexion */
     .login-overlay {
       position: fixed;
       top: 0;
@@ -60,10 +61,11 @@
     .error-msg { color: #c0392b; font-size: 0.8rem; margin-top: 0.5rem; }
     .hidden { display: none !important; }
 
+    /* Navigation avec menu hamburger */
     .nav-bar {
       background: #1f3a1f;
       color: white;
-      padding: 0 2rem;
+      padding: 0 1rem;
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -73,13 +75,23 @@
       z-index: 900;
       box-shadow: 0 4px 12px rgba(0,0,0,0.1);
     }
-    .nav-logo { font-weight: 700; font-size: 1.2rem; display: flex; align-items: center; gap: 0.6rem; }
+    .nav-logo { font-weight: 700; font-size: 1.1rem; display: flex; align-items: center; gap: 0.5rem; }
+    .burger {
+      display: none;
+      font-size: 1.8rem;
+      cursor: pointer;
+      background: none;
+      border: none;
+      color: white;
+      padding: 0 0.5rem;
+    }
     .nav-tabs {
       display: flex;
       gap: 0.25rem;
       background: rgba(255,255,255,0.1);
       padding: 0.25rem;
       border-radius: 48px;
+      transition: all 0.3s ease;
     }
     .tab-btn {
       background: transparent;
@@ -91,31 +103,73 @@
       color: rgba(255,255,255,0.7);
       cursor: pointer;
       transition: all 0.2s;
+      white-space: nowrap;
     }
     .tab-btn.active { background: #2d5a27; color: white; box-shadow: 0 2px 6px rgba(0,0,0,0.2); }
     .tab-btn:hover:not(.active) { background: rgba(255,255,255,0.15); color: white; }
 
+    /* Version mobile : menu hamburger */
+    @media (max-width: 768px) {
+      .burger { display: block; }
+      .nav-tabs {
+        position: fixed;
+        top: 64px;
+        left: -100%;
+        flex-direction: column;
+        background: #1f3a1f;
+        width: 80%;
+        max-width: 280px;
+        height: auto;
+        border-radius: 0 20px 20px 0;
+        padding: 1rem;
+        gap: 0.5rem;
+        transition: left 0.3s ease;
+        box-shadow: 4px 4px 12px rgba(0,0,0,0.3);
+        z-index: 1000;
+      }
+      .nav-tabs.open { left: 0; }
+      .tab-btn {
+        text-align: left;
+        padding: 0.8rem 1rem;
+        font-size: 1rem;
+        white-space: normal;
+      }
+      .overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.5);
+        z-index: 999;
+        display: none;
+      }
+      .overlay.open { display: block; }
+    }
+
+    /* Hero */
     .hero {
       background: linear-gradient(135deg, #1f3a1f, #2d5a27);
       color: white;
-      padding: 3rem 2rem;
+      padding: 2rem 1rem;
       text-align: center;
     }
-    .hero h1 { font-size: 2.2rem; font-weight: 700; margin-bottom: 0.5rem; }
-    .hero p { font-size: 1rem; opacity: 0.9; }
+    .hero h1 { font-size: 1.6rem; font-weight: 700; margin-bottom: 0.5rem; }
+    .hero p { font-size: 0.9rem; }
     .hero-meta {
       display: flex;
       flex-wrap: wrap;
       justify-content: center;
-      gap: 1.2rem;
-      margin-top: 1.5rem;
+      gap: 0.8rem;
+      margin-top: 1rem;
     }
-    .hero-meta span { background: rgba(255,255,255,0.15); padding: 0.4rem 1rem; border-radius: 40px; font-size: 0.85rem; }
+    .hero-meta span { background: rgba(255,255,255,0.15); padding: 0.3rem 0.8rem; border-radius: 40px; font-size: 0.75rem; }
 
+    /* Conteneur */
     .main-container {
       max-width: 1200px;
       margin: 0 auto;
-      padding: 2rem 1.5rem 3rem;
+      padding: 1.5rem 1rem 2rem;
     }
     .tab-content { display: none; animation: fade 0.3s ease; }
     .tab-content.active-tab { display: block; }
@@ -125,171 +179,143 @@
     .parcelle-card {
       background: white;
       border-radius: 24px;
-      padding: 1.5rem;
-      margin-bottom: 2rem;
-      box-shadow: 0 8px 20px rgba(0,0,0,0.05);
-      border-left: 6px solid #4a8c3f;
-      transition: transform 0.2s, box-shadow 0.2s;
+      padding: 1rem;
+      margin-bottom: 1.5rem;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+      border-left: 5px solid #4a8c3f;
     }
-    .parcelle-card:hover { transform: translateY(-2px); box-shadow: 0 12px 24px rgba(0,0,0,0.08); }
-    .parcelle-card h3 { font-size: 1.4rem; font-weight: 700; color: #1f3a1f; margin-bottom: 0.75rem; }
+    .parcelle-card h3 { font-size: 1.2rem; margin-bottom: 0.5rem; }
     .parcelle-details {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap: 1rem;
-      margin-top: 1rem;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 0.8rem;
+      margin-top: 0.8rem;
     }
-    .parcelle-item {
-      background: #fefef9;
-      padding: 0.8rem;
-      border-radius: 16px;
-      border: 1px solid #e2e8dc;
-    }
+    .parcelle-item { background: #fefef9; padding: 0.6rem; border-radius: 14px; font-size: 0.85rem; }
 
-    /* KPI, cartes, graphiques, etc. (inchangés) */
+    /* KPI */
     .kpi-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 1rem;
-      margin-bottom: 2rem;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 0.8rem;
+      margin-bottom: 1.5rem;
     }
     .kpi-card {
       background: white;
       border-radius: 20px;
-      padding: 1.2rem;
+      padding: 0.8rem;
       text-align: center;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-      border: 1px solid #e2e8dc;
-      transition: all 0.2s;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
     }
-    .kpi-card:hover { transform: translateY(-3px); box-shadow: 0 8px 20px rgba(0,0,0,0.08); }
-    .kpi-value { font-size: 1.8rem; font-weight: 800; color: #2d5a27; }
-    .kpi-label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: #5a6e4a; }
+    .kpi-value { font-size: 1.4rem; font-weight: 800; color: #2d5a27; }
+    .kpi-label { font-size: 0.7rem; text-transform: uppercase; }
 
+    /* Cartes génériques */
     .card-modern {
       background: white;
       border-radius: 24px;
-      padding: 1.5rem;
-      margin-bottom: 1.5rem;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+      padding: 1rem;
+      margin-bottom: 1.2rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
       border: 1px solid #e2e8dc;
-      transition: box-shadow 0.2s;
     }
-    .card-modern:hover { box-shadow: 0 8px 20px rgba(0,0,0,0.08); }
     .section-title {
-      font-size: 1.3rem;
+      font-size: 1.2rem;
       font-weight: 700;
-      color: #1f3a1f;
-      margin-bottom: 1rem;
+      margin-bottom: 0.8rem;
       display: flex;
       align-items: center;
       gap: 0.5rem;
     }
     .grid-2cols {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-      gap: 1.5rem;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 1rem;
     }
-
     .soil-info {
       background: #eef2e9;
-      border-radius: 20px;
-      padding: 1.2rem;
+      border-radius: 16px;
+      padding: 0.8rem;
       display: flex;
-      align-items: center;
-      gap: 1rem;
-      border-left: 5px solid #d9a13b;
+      flex-direction: column;
+      gap: 0.5rem;
     }
-    .soil-info-icon { font-size: 2rem; }
-    .soil-info-text { flex: 1; }
-    .soil-info-text strong { color: #a5671a; }
+    .soil-info-icon { font-size: 1.8rem; text-align: center; }
     .soil-stats {
       display: flex;
-      gap: 1rem;
-      margin-top: 0.5rem;
       flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-top: 0.5rem;
     }
     .soil-stat {
       background: white;
-      border-radius: 40px;
-      padding: 0.3rem 1rem;
-      font-size: 0.8rem;
-      font-weight: 500;
+      border-radius: 30px;
+      padding: 0.2rem 0.8rem;
+      font-size: 0.75rem;
     }
-
     .reco-list {
       list-style: none;
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-      gap: 0.8rem;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 0.6rem;
     }
     .reco-list li {
       display: flex;
       align-items: flex-start;
-      gap: 0.6rem;
-      font-size: 0.9rem;
+      gap: 0.5rem;
+      font-size: 0.85rem;
       background: #fefef9;
-      padding: 0.6rem;
-      border-radius: 16px;
+      padding: 0.5rem;
+      border-radius: 14px;
     }
     .reco-list li::before { content: "🌱"; font-size: 1rem; flex-shrink: 0; }
-
     .btn-pdf {
       background: #2d5a27;
       color: white;
-      padding: 0.8rem 2rem;
+      padding: 0.7rem 1.5rem;
       border-radius: 48px;
       text-decoration: none;
       font-weight: 600;
       display: inline-flex;
       align-items: center;
-      gap: 0.8rem;
-      transition: all 0.2s;
+      gap: 0.6rem;
     }
-    .btn-pdf:hover { background: #1f3a1f; transform: scale(1.02); }
-
     .map-wrapper {
-      height: 520px;
+      height: 400px;
       width: 100%;
-      border-radius: 24px;
+      border-radius: 20px;
       overflow: hidden;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.1);
-      border: 1px solid #c8d9c5;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      margin-top: 0.5rem;
     }
     #map { height: 100%; width: 100%; }
-
     .service-card {
       background: linear-gradient(135deg, #eef5ea, #ffffff);
       border-radius: 24px;
-      padding: 2rem;
+      padding: 1.2rem;
       text-align: center;
-      border: 1px dashed #4a8c3f;
     }
     .btn-outline {
       background: transparent;
       border: 2px solid #2d5a27;
       color: #2d5a27;
-      padding: 0.6rem 1.5rem;
+      padding: 0.5rem 1.2rem;
       border-radius: 48px;
       font-weight: 600;
       cursor: pointer;
-      transition: 0.2s;
+      margin-top: 0.8rem;
     }
-    .btn-outline:hover { background: #2d5a27; color: white; }
-
     footer {
       background: #1f3a1f;
       color: #bdd4b5;
       text-align: center;
-      padding: 1.8rem;
-      font-size: 0.8rem;
-      margin-top: 2rem;
+      padding: 1rem;
+      font-size: 0.7rem;
     }
-
-    @media (max-width: 700px) {
-      .nav-tabs { gap: 0.1rem; }
-      .tab-btn { padding: 0.4rem 0.8rem; font-size: 0.75rem; }
-      .map-wrapper { height: 380px; }
+    @media (max-width: 480px) {
+      .hero h1 { font-size: 1.3rem; }
+      .kpi-value { font-size: 1.2rem; }
+      .map-wrapper { height: 320px; }
     }
   </style>
 </head>
@@ -320,7 +346,8 @@
 
 <nav class="nav-bar">
   <div class="nav-logo">🌿 SmartAgroMap · Atakpamé</div>
-  <div class="nav-tabs">
+  <button class="burger" id="burgerBtn">☰</button>
+  <div class="nav-tabs" id="navTabs">
     <button class="tab-btn active" data-tab="carte">🗺️ Carte</button>
     <button class="tab-btn" data-tab="indicateurs">📊 Indicateurs</button>
     <button class="tab-btn" data-tab="recommandations">🌱 Recommandations</button>
@@ -328,6 +355,7 @@
     <button class="tab-btn" data-tab="rapport">📄 Rapport</button>
   </div>
 </nav>
+<div id="overlay" class="overlay"></div>
 
 <div class="hero">
   <h1>Diagnostic agronomique<br>Terrain Marcel Bossou</h1>
@@ -340,123 +368,102 @@
 </div>
 
 <main class="main-container">
-
-  <!-- ========== ONGLET CARTE ========== -->
+  <!-- Onglet Carte -->
   <div id="carte-tab" class="tab-content active-tab">
-    <!-- Fiche parcelle (visible uniquement ici) -->
     <div class="parcelle-card">
       <h3>📍 Parcelle de Monsieur Marcel Bossou</h3>
-      <p><strong>Localisation :</strong> Atakpamé, Région des Plateaux, Togo — Coordonnées centrales : 7.382°N, 1.126°E</p>
+      <p>Atakpamé, Togo — 7.382°N, 1.126°E</p>
       <div class="parcelle-details">
-        <div class="parcelle-item"><strong>Superficie totale</strong><br>22,17 hectares</div>
-        <div class="parcelle-item"><strong>Occupation du sol</strong><br>Jachère, bas-fonds humides, zones de culture pluviale</div>
-        <div class="parcelle-item"><strong>Objectif principal</strong><br>Optimisation arachide, maïs, sorgho + agroforesterie</div>
-        <div class="parcelle-item"><strong>Contraintes majeures</strong><br>Stress hydrique (NDMI négatif), sols sableux pauvres</div>
+        <div class="parcelle-item"><strong>Superficie</strong><br>22,17 ha</div>
+        <div class="parcelle-item"><strong>Occupation</strong><br>Jachère, bas-fonds</div>
+        <div class="parcelle-item"><strong>Objectif</strong><br>Arachide, maïs, sorgho</div>
+        <div class="parcelle-item"><strong>Contraintes</strong><br>Stress hydrique, sols sableux</div>
       </div>
     </div>
-
-    <div class="card-modern" style="padding:0; overflow:hidden;">
-      <div style="padding: 1rem 1.5rem 0 1.5rem;">
-        <h2 class="section-title">🗺️ Carte interactive multi-couches</h2>
-        <p style="font-size:0.85rem; color:#5a6e4a;">Utilisez le contrôle des couches (en haut à droite) pour visualiser NDVI, NDMI, pente, santé du sol, favorabilité des cultures.</p>
+    <div class="card-modern" style="padding:0;">
+      <div style="padding: 0.8rem 1rem 0;">
+        <h2 class="section-title">🗺️ Carte interactive</h2>
+        <p style="font-size:0.8rem;">Contrôle des couches en haut à droite</p>
       </div>
       <div class="map-wrapper"><div id="map"></div></div>
     </div>
   </div>
 
-  <!-- ========== ONGLET INDICATEURS ========== -->
+  <!-- Onglet Indicateurs -->
   <div id="indicateurs-tab" class="tab-content">
     <div class="kpi-grid">
-      <div class="kpi-card"><div class="kpi-value">96%</div><div class="kpi-label">Arachide très favorable</div></div>
-      <div class="kpi-card"><div class="kpi-value">0.199-0.658</div><div class="kpi-label">NDVI (végétation)</div></div>
-      <div class="kpi-card"><div class="kpi-value">-0.35 à 0.085</div><div class="kpi-label">NDMI (humidité)</div></div>
-      <div class="kpi-card"><div class="kpi-value">0-6.7°</div><div class="kpi-label">Pente moyenne</div></div>
+      <div class="kpi-card"><div class="kpi-value">96%</div><div class="kpi-label">Arachide favorable</div></div>
+      <div class="kpi-card"><div class="kpi-value">0.20-0.66</div><div class="kpi-label">NDVI</div></div>
+      <div class="kpi-card"><div class="kpi-value">-0.35 à 0.09</div><div class="kpi-label">NDMI</div></div>
+      <div class="kpi-card"><div class="kpi-value">0-6.7°</div><div class="kpi-label">Pente</div></div>
     </div>
     <div class="grid-2cols">
-      <div class="card-modern"><canvas id="ndviChart" height="220"></canvas><p style="text-align:center; font-size:0.75rem; margin-top:0.5rem; color:#5a6e4a;">Répartition NDVI</p></div>
-      <div class="card-modern"><canvas id="ndmiChart" height="220"></canvas><p style="text-align:center; font-size:0.75rem; margin-top:0.5rem; color:#5a6e4a;">Stress hydrique (NDMI)</p></div>
-      <div class="card-modern"><canvas id="penteChart" height="220"></canvas><p style="text-align:center; font-size:0.75rem; margin-top:0.5rem; color:#5a6e4a;">Classes de pente</p></div>
+      <div class="card-modern"><canvas id="ndviChart" height="200"></canvas><p style="text-align:center; font-size:0.7rem;">NDVI</p></div>
+      <div class="card-modern"><canvas id="ndmiChart" height="200"></canvas><p style="text-align:center; font-size:0.7rem;">NDMI (stress hydrique)</p></div>
+      <div class="card-modern"><canvas id="penteChart" height="200"></canvas><p style="text-align:center; font-size:0.7rem;">Pente</p></div>
     </div>
     <div class="card-modern">
-      <h3 class="section-title">🧱 État de la fertilité des sols</h3>
+      <h3 class="section-title">🧱 Fertilité des sols</h3>
       <div class="soil-info">
         <div class="soil-info-icon">🌾</div>
-        <div class="soil-info-text">
-          <strong>Zones à fertilité faible (non améliorées)</strong><br>
-          Environ <strong>7,8 hectares</strong> (35% de la surface) présentent un sol sableux pauvre en matière organique, nécessitant des apports réguliers de compost et des pratiques agroécologiques.
-          <div class="soil-stats">
-            <span class="soil-stat">✅ Sols fertiles : 14,4 ha (65%)</span>
-            <span class="soil-stat">⚠️ Sols à améliorer : 7,8 ha (35%)</span>
-          </div>
-          <p style="margin-top:0.5rem;">Ces zones ne sont pas dégradées de façon irréversible, mais un travail d’amendement et de restauration est recommandé.</p>
-        </div>
+        <div><strong>Zones à fertilité faible (non améliorées)</strong><br>7,8 ha (35%) nécessitent compost et zaï.</div>
+        <div class="soil-stats"><span class="soil-stat">✅ Sols fertiles : 14,4 ha</span><span class="soil-stat">⚠️ À améliorer : 7,8 ha</span></div>
       </div>
-      <p style="margin-top:1rem; font-size:0.9rem;">La couche "Santé du sol" sur la carte interactive localise ces parcelles.</p>
+      <p style="margin-top:0.5rem; font-size:0.8rem;">La couche "Santé du sol" sur la carte localise ces zones.</p>
     </div>
     <div class="card-modern">
-      <h3 class="section-title">📈 Synthèse des indices</h3>
-      <p><strong>🌿 NDVI</strong> : biomasse faible à moyenne (0.199-0.658). Les zones les plus vertes correspondent aux bas-fonds.</p>
-      <p><strong>💧 NDMI</strong> : majoritairement négatif → stress hydrique modéré à sévère sur 18,2 ha (82%). Seuls 3,8 ha ont une humidité correcte.</p>
-      <p><strong>⛰️ Pente</strong> : 0-2° (56% : plat), 2-4° (33% : léger dénivelé), 4-6.7° (11% : risque d’érosion à surveiller).</p>
+      <h3 class="section-title">📈 Synthèse</h3>
+      <p><strong>NDVI</strong> : biomasse faible à moyenne.<br>
+      <strong>NDMI</strong> : stress hydrique sur 18,2 ha (82%).<br>
+      <strong>Pente</strong> : 11% >4° (risque érosion).</p>
     </div>
   </div>
 
-  <!-- ========== ONGLET RECOMMANDATIONS ========== -->
+  <!-- Onglet Recommandations -->
   <div id="recommandations-tab" class="tab-content">
     <div class="card-modern">
-      <h2 class="section-title">🌿 Préconisations agronomiques</h2>
+      <h2 class="section-title">🌿 Préconisations</h2>
       <ul class="reco-list">
-        <li><strong>Fertilité</strong> : apport régulier de fumier ou compost (sol sableux).</li>
-        <li><strong>Eau & érosion</strong> : cordons pierreux et bandes enherbées (vetiver) sur les pentes >4°.</li>
-        <li><strong>Zones non améliorées</strong> : creuser des demi‑lunes ou zaï pour concentrer l’eau et la matière organique.</li>
-        <li><strong>Arbres fertilitaires</strong> : planter Faidherbia albida, Néré, Gliricidia, Moringa en haies brise‑vent.</li>
-        <li><strong>Rotation</strong> : arachide → maïs/sorgho pour maintenir la fertilité.</li>
-        <li><strong>Semis précoce</strong> : début de saison des pluies (mars‑avril).</li>
+        <li><strong>Fertilité</strong> : fumier/compost (sol sableux).</li>
+        <li><strong>Eau & érosion</strong> : cordons pierreux, vetiver.</li>
+        <li><strong>Zones non améliorées</strong> : demi‑lunes, zaï.</li>
+        <li><strong>Arbres fertilitaires</strong> : Faidherbia, Néré, Moringa.</li>
+        <li><strong>Rotation</strong> : arachide → maïs/sorgho.</li>
+        <li><strong>Semis précoce</strong> : mars-avril.</li>
       </ul>
     </div>
     <div class="card-modern">
-      <h3 class="section-title">📅 Calendrier indicatif</h3>
-      <p>✅ Préparation du sol et fumure : février-mars<br>
-      🌱 Semis de l'arachide : dès les premières pluies (mars-avril)<br>
-      🌾 Repousses et rotation céréales : juin-juillet<br>
-      💧 Surveillance NDMI : mai à septembre (irrigation si nécessaire)<br>
-      📊 Suivi NDVI toutes les 2 semaines via la carte interactive</p>
+      <h3 class="section-title">📅 Calendrier</h3>
+      <p>Fév-mars : préparation/fumure<br>Mars-avril : semis arachide<br>Juin-juillet : rotation céréales<br>Mai-sept : irrigation si NDMI négatif</p>
     </div>
   </div>
 
-  <!-- ========== ONGLET SUIVI ========== -->
+  <!-- Onglet Suivi -->
   <div id="suivi-tab" class="tab-content">
     <div class="service-card">
-      <div class="service-icon">📡</div>
-      <h3 style="font-size:1.5rem; margin-bottom:0.5rem;">Service de suivi personnalisé</h3>
-      <p style="margin-bottom:1.2rem;">Vous souhaitez un monitoring régulier de vos parcelles ?<br>
-      <strong>SmartAgroMap</strong> vous propose un abonnement mensuel incluant :</p>
-      <ul style="text-align:left; max-width:400px; margin:0 auto 1.5rem auto;">
-        <li>✅ Mise à jour hebdomadaire des indices NDVI, NDMI, SAVI</li>
-        <li>✅ Alertes précoces de stress hydrique ou érosion</li>
-        <li>✅ Rapport mensuel personnalisé avec recommandations</li>
-        <li>✅ Accès à un tableau de bord dédié</li>
-      </ul>
-      <button class="btn-outline" onclick="alert('Merci de votre intérêt ! Un conseiller vous contactera prochainement.')">📩 Je souhaite être recontacté</button>
-      <p style="margin-top:1rem; font-size:0.75rem; color:#5a6e4a;">* Service disponible à partir de mai 2026 – version de démonstration</p>
+      <div style="font-size:2rem;">📡</div>
+      <h3>Service de suivi personnalisé</h3>
+      <p>Abonnement mensuel : mises à jour NDVI/NDMI, alertes, rapport personnalisé.</p>
+      <button class="btn-outline" onclick="alert('Merci ! Un conseiller vous contactera.')">📩 Être recontacté</button>
+      <p style="font-size:0.7rem; margin-top:0.5rem;">*Service démo disponible mai 2026</p>
     </div>
   </div>
 
-  <!-- ========== ONGLET RAPPORT ========== -->
+  <!-- Onglet Rapport -->
   <div id="rapport-tab" class="tab-content">
-    <div class="card-modern" style="text-align: center;">
-      <h2 class="section-title" style="justify-content: center;">📄 Rapport final d’étude</h2>
-      <p style="margin-bottom: 1.5rem;">Téléchargez le diagnostic complet au format PDF (analyse des sols, indices, cartes, préconisations).</p>
-      <a class="btn-pdf" href="rapport_final.pdf" download>📄 Télécharger le rapport (PDF)</a>
+    <div class="card-modern" style="text-align:center;">
+      <h2 class="section-title" style="justify-content:center;">📄 Rapport final</h2>
+      <p>Téléchargez le diagnostic complet (PDF).</p>
+      <a class="btn-pdf" href="rapport_final.pdf" download>📄 Télécharger le rapport</a>
     </div>
   </div>
 </main>
 
 <footer>
-  © SmartAgroMap – Marieme Lissa Keita, Ingénieure Géomaticienne – Données : Sentinel‑2, SRTM, SoilGrids, CHIRPS/ANAMET
+  © SmartAgroMap – Marieme Lissa Keita – Données : Sentinel‑2, SRTM, SoilGrids, CHIRPS/ANAMET
 </footer>
 
-<!-- Scripts QGIS2WEB (intégrale, identique à la version fonctionnelle précédente) -->
+<!-- Scripts QGIS2WEB (inchangés) -->
 <script src="qgis2web_export/js/qgis2web_expressions.js"></script>
 <script src="qgis2web_export/js/leaflet.js"></script>
 <script src="qgis2web_export/js/L.Control.Layers.Tree.min.js"></script>
@@ -483,21 +490,32 @@
 <script src="qgis2web_export/data/Coordonnesdelaparcelle_11.js"></script>
 
 <script>
-  // Gestion des onglets
-  const tabs = document.querySelectorAll('.tab-btn');
-  const contents = document.querySelectorAll('.tab-content');
-  tabs.forEach(btn => {
-    btn.addEventListener('click', () => {
+  // Menu hamburger
+  const burger = document.getElementById('burgerBtn');
+  const navTabs = document.getElementById('navTabs');
+  const overlay = document.getElementById('overlay');
+  function closeMenu() {
+    navTabs.classList.remove('open');
+    overlay.classList.remove('open');
+  }
+  burger.addEventListener('click', () => {
+    navTabs.classList.toggle('open');
+    overlay.classList.toggle('open');
+  });
+  overlay.addEventListener('click', closeMenu);
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      closeMenu();
       const tabId = btn.getAttribute('data-tab');
-      contents.forEach(c => c.classList.remove('active-tab'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active-tab'));
       document.getElementById(`${tabId}-tab`).classList.add('active-tab');
-      tabs.forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       if (tabId === 'carte' && map) setTimeout(() => map.invalidateSize(), 100);
     });
   });
 
-  // Initialisation de la carte (identique à la version finale précédente)
+  // Initialisation de la carte (intégrale QGIS2WEB)
   var map = L.map('map', { zoomControl: false, maxZoom: 28, minZoom: 4 })
       .fitBounds([[7.373374269483139,1.1127854837112017],[7.386386251671033,1.1370231099988932]]);
   var hash = new L.Hash(map);
@@ -516,7 +534,6 @@
     }
     return tempDiv.innerHTML;
   }
-
   function addClassToPopupIfMedia(content, popup) {
     var tempDiv = document.createElement('div');
     tempDiv.innerHTML = content;
@@ -547,7 +564,7 @@
     return keys.map(k => props[k] != null ? '<tr><td colspan="2">' + autolinker.link(String(props[k])) + '</td></tr>' : '').join('');
   }
 
-  // --- Définition de toutes les couches (reprise intégrale du code fonctionnel) ---
+  // Couches (copie intégrale de votre export)
   function pop_Arachide_1(f,l){ var c=makePopup(f.properties,['fid','DN','AREA']); c=removeEmptyRowsFromPopupContent(c,f); l.on('popupopen',function(e){addClassToPopupIfMedia(c,e.popup);}); l.bindPopup(c,{maxHeight:400}); }
   function style_Arachide_1_0(f){ switch(String(f.properties['DN'])){ case'1':return{pane:'pane_Arachide_1',stroke:false,fill:true,fillOpacity:1,fillColor:'rgba(255,122,99,0.8)',interactive:true}; case'2':return{pane:'pane_Arachide_1',stroke:false,fill:true,fillOpacity:1,fillColor:'rgba(238,255,134,0.8)',interactive:true}; case'3':return{pane:'pane_Arachide_1',stroke:false,fill:true,fillOpacity:1,fillColor:'rgba(98,176,95,0.8)',interactive:true}; default:return{}; } }
   map.createPane('pane_Arachide_1'); map.getPane('pane_Arachide_1').style.zIndex=401;
@@ -649,23 +666,20 @@
   map.on('layeradd', function() { resetLabels([layer_Coordonnesdelaparcelle_11]); });
   map.on('layerremove', function() { resetLabels([layer_Coordonnesdelaparcelle_11]); });
 
-  // ========== GRAPHIQUES ==========
+  // Graphiques
   new Chart(document.getElementById('ndviChart'), {
     type: 'pie',
-    data: { labels: ['NDVI faible (0.199-0.35)', 'NDVI moyen (0.35-0.50)', 'NDVI bon (0.50-0.658)'],
-            datasets: [{ data: [35, 48, 17], backgroundColor: ['#ffb44a', '#eeff86', '#24a91f'], borderWidth: 0 }] },
-    options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { font: { size: 11 } } } } }
+    data: { labels: ['NDVI faible', 'NDVI moyen', 'NDVI bon'], datasets: [{ data: [35, 48, 17], backgroundColor: ['#ffb44a', '#eeff86', '#24a91f'], borderWidth: 0 }] },
+    options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { font: { size: 10 } } } } }
   });
   new Chart(document.getElementById('ndmiChart'), {
     type: 'bar',
-    data: { labels: ['Stress hydrique sévère', 'Humidité modérée'],
-            datasets: [{ label: 'Superficie (ha)', data: [18.2, 3.8], backgroundColor: ['#73b2d8', '#08306b'], borderRadius: 8, barPercentage: 0.6 }] },
-    options: { responsive: true, plugins: { legend: { position: 'bottom' } }, scales: { y: { beginAtZero: true, grid: { color: '#e2e8dc' } } } }
+    data: { labels: ['Stress hydrique', 'Humidité modérée'], datasets: [{ label: 'Superficie (ha)', data: [18.2, 3.8], backgroundColor: ['#73b2d8', '#08306b'], borderRadius: 8 }] },
+    options: { responsive: true, plugins: { legend: { position: 'bottom' } }, scales: { y: { beginAtZero: true } } }
   });
   new Chart(document.getElementById('penteChart'), {
     type: 'bar',
-    data: { labels: ['Pente 0-2°', 'Pente 2-4°', 'Pente 4-6.7°'],
-            datasets: [{ label: 'Superficie (ha)', data: [12.4, 7.3, 2.5], backgroundColor: ['#1a9641', '#ffffc0', '#d7191c'], borderRadius: 8 }] },
+    data: { labels: ['0-2°', '2-4°', '4-6.7°'], datasets: [{ label: 'Superficie (ha)', data: [12.4, 7.3, 2.5], backgroundColor: ['#1a9641', '#ffffc0', '#d7191c'], borderRadius: 8 }] },
     options: { responsive: true, plugins: { legend: { position: 'bottom' } }, scales: { y: { beginAtZero: true } } }
   });
 </script>
